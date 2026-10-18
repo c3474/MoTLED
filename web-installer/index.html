@@ -950,12 +950,22 @@
                         <div class="config-item">
                             <label for="rgbOrder">Color Order</label>
                             <select id="rgbOrder">
-                                <option value="grb">GRB</option>
-                                <option value="rgb">RGB</option>
-                                <option value="bgr">BGR</option>
-                                <option value="rbg">RBG</option>
-                                <option value="brg">BRG</option>
-                                <option value="gbr">GBR</option>
+                                <optgroup label="RGB (RGBW: white last)">
+                                    <option value="grb">GRB</option>
+                                    <option value="rgb">RGB</option>
+                                    <option value="bgr">BGR</option>
+                                    <option value="rbg">RBG</option>
+                                    <option value="brg">BRG</option>
+                                    <option value="gbr">GBR</option>
+                                </optgroup>
+                                <optgroup label="RGBW, white first (e.g. WS2814)">
+                                    <option value="wrgb">WRGB</option>
+                                    <option value="wgrb">WGRB</option>
+                                    <option value="wbgr">WBGR</option>
+                                    <option value="wrbg">WRBG</option>
+                                    <option value="wbrg">WBRG</option>
+                                    <option value="wgbr">WGBR</option>
+                                </optgroup>
                             </select>
                         </div>
                     </div>
@@ -1050,13 +1060,16 @@
                         <li><code>WS2812B</code> - Most common, 800kHz</li>
                         <li><code>WS2811</code> - Older, 400kHz</li>
                         <li><code>SK6812</code> - Similar to WS2812B, some have RGBW</li>
+                        <li><code>WS2814</code> - RGBW, often 12V or 24V: choose <code>SK6812 (RGBW)</code> and usually a white-first order such as <code>WRGB</code></li>
                     </ul>
                     <p><strong>Color Order</strong> - If colors look wrong, try different orders:</p>
                     <ul>
                         <li><code>GRB</code> - Most WS2812B strips</li>
                         <li><code>RGB</code> - Some WS2811 and older strips</li>
                         <li><code>BGR</code> / <code>RBG</code> - Less common</li>
+                        <li><code>WRGB</code> etc. - RGBW strips that send white first (many WS2814)</li>
                     </ul>
+                    <p><strong>Finding an RGBW order</strong> - Start with <code>GRB</code>, then set red, green, blue and white in your Home app and note which color each one shows. Whatever lights up for green is the strip's 1st byte, red its 2nd, blue its 3rd, and white its 4th. For example, if green shows white, red shows red, blue shows green and white shows blue, the order is <code>WRGB</code>.</p>
                     <p><strong>Max Brightness</strong> - Limits power consumption and heat (1-255)</p>
                 </div>
             </div>
@@ -1071,7 +1084,7 @@
                     <p><strong>set type &lt;type&gt;</strong> <span>ws2812b, ws2811, sk6812, ws2805</span></p>
                     <p><strong>set bin &lt;n|off&gt;</strong> <span>WS2805 backup data GPIO</span></p>
                     <p><strong>set white_order &lt;o&gt;</strong> <span>WS2805 whites: ww_cw, cw_ww</span></p>
-                    <p><strong>set order &lt;order&gt;</strong> <span>grb, rgb, brg, rbg, bgr, gbr</span></p>
+                    <p><strong>set order &lt;order&gt;</strong> <span>grb, rgb, brg, rbg, bgr, gbr; RGBW: add w where white goes, e.g. wrgb</span></p>
                     <p><strong>set brightness &lt;n&gt;</strong> <span>Max brightness 1-255</span></p>
                     <p><strong>save</strong> <span>Save config to flash</span></p>
                     <p><strong>reboot</strong> <span>Restart device</span></p>

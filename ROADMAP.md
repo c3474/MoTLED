@@ -9,12 +9,16 @@ once it is merged and tested on the strip.
 
 ## Phase 1: get the WS2814 strip working
 
-- [ ] **M-1 WRGB color order.** Allow `set order wrgb` (and any other 4-letter
+- [x] **M-1 WRGB color order.** Allow `set order wrgb` (and any other 4-letter
       order that includes W, such as `rgbw` or `grbw`) for SK6812-type strips.
       The setting persists in NVS, older saved configs migrate without being
       wiped, and the 3-letter orders behave as before.
-- [ ] **M-2 Web config UI.** Add the 4-letter orders to the installer's
-      color-order dropdown and help text.
+- [x] **M-2 Web config UI.** Add the white-first orders to the installer's
+      color-order dropdown, plus help on how to find a strip's order.
+- [ ] **M-2b WS2814 guidance.** Make it obvious which type and order to pick
+      for a WS2814. Options: relabel the type as "SK6812 / WS2814 (RGBW)" (web
+      only), or add a `ws2814` firmware type that behaves like `sk6812` and
+      defaults to `wrgb`.
 - [ ] **M-3 Bench test.** Flash from the web installer without erasing, so the
       Apple Home pairing survives. Check red, green, blue and white, dimming,
       and all 100 pixels lighting evenly.
@@ -52,5 +56,6 @@ once it is merged and tested on the strip.
       <https://c3474.github.io/MoTLED/>. No local toolchain and no committed
       binaries. Flash from Chrome or Edge and leave "Erase device" unticked to
       keep the Apple Home pairing.
-- [ ] **H-3 Rebrand the web installer.** Change its title and links from TLED
-      to MoTLED, and credit upstream.
+- [ ] **H-3 Rebrand and restyle the web installer.** Give it its own look
+      (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
+      Change its title and links to MoTLED and credit upstream TLED.
