@@ -15,10 +15,10 @@ once it is merged and tested on the strip.
       wiped, and the 3-letter orders behave as before.
 - [x] **M-2 Web config UI.** Add the white-first orders to the installer's
       color-order dropdown, plus help on how to find a strip's order.
-- [ ] **M-2b WS2814 guidance.** Make it obvious which type and order to pick
-      for a WS2814. Options: relabel the type as "SK6812 / WS2814 (RGBW)" (web
-      only), or add a `ws2814` firmware type that behaves like `sk6812` and
-      defaults to `wrgb`.
+- [x] **M-2b WS2814 guidance.** Make it obvious which type and order to pick
+      for a WS2814. The type reads "SK6812 / WS2814 (RGBW)" on the web
+      page, with a hint pointing to the white-first orders. No firmware type:
+      a WS2814 only differs from an SK6812 in byte order, which is a setting.
 - [ ] **M-3 Bench test.** Flash from the web installer without erasing, so the
       Apple Home pairing survives. Check red, green, blue and white, dimming,
       and all 100 pixels lighting evenly.

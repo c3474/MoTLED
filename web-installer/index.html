@@ -573,6 +573,12 @@
             letter-spacing: 0.08em;
         }
 
+        .config-hint {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+        }
+
         .config-item select,
         .config-item input {
             font-family: 'JetBrains Mono', monospace;
@@ -943,7 +949,7 @@
                             <select id="ledType">
                                 <option value="ws2812b">WS2812B</option>
                                 <option value="ws2811">WS2811</option>
-                                <option value="sk6812">SK6812 (RGBW)</option>
+                                <option value="sk6812">SK6812 / WS2814 (RGBW)</option>
                                 <option value="ws2805">WS2805 (RGBCCT)</option>
                             </select>
                         </div>
@@ -969,6 +975,11 @@
                             </select>
                         </div>
                     </div>
+                    <p id="orderHint" class="config-hint" hidden>
+                        RGBW strips: SK6812 usually sends white last (GRB). WS2814 strips often send it
+                        first, so try a white-first order such as WRGB. If colors look wrong, see
+                        "Finding an RGBW order" in the Docs tab.
+                    </p>
 
                     <div class="config-item">
                         <label for="maxBrightness">Max Brightness (1-255)</label>
@@ -1060,7 +1071,7 @@
                         <li><code>WS2812B</code> - Most common, 800kHz</li>
                         <li><code>WS2811</code> - Older, 400kHz</li>
                         <li><code>SK6812</code> - Similar to WS2812B, some have RGBW</li>
-                        <li><code>WS2814</code> - RGBW, often 12V or 24V: choose <code>SK6812 (RGBW)</code> and usually a white-first order such as <code>WRGB</code></li>
+                        <li><code>WS2814</code> - RGBW, often 12V or 24V: choose <code>SK6812 / WS2814 (RGBW)</code> and usually a white-first order such as <code>WRGB</code></li>
                     </ul>
                     <p><strong>Color Order</strong> - If colors look wrong, try different orders:</p>
                     <ul>
@@ -1282,6 +1293,13 @@
             }
         }
 
+        // Show RGBW color order guidance when an RGBW type is selected
+        function updateOrderHint() {
+            const isRgbw = document.getElementById('ledType').value === 'sk6812';
+            document.getElementById('orderHint').hidden = !isRgbw;
+        }
+        document.getElementById('ledType').addEventListener('change', updateOrderHint);
+
         function parseConfig(text) {
             // Buffer incoming text across chunks so a line split mid-chunk doesn't
             // truncate the value (e.g. "ws2" instead of "ws2805").
@@ -1307,6 +1325,7 @@
                             break;
                         case 'type':
                             document.getElementById('ledType').value = value.trim();
+                            updateOrderHint();
                             break;
                         case 'order':
                             document.getElementById('rgbOrder').value = value.trim();
