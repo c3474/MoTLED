@@ -1,18 +1,51 @@
-name: Deploy Web Installer
+name: Build Firmware and Deploy Web Installer
+
+# Every push builds the firmware so breakage shows up early.
+# Pushes to main (and manual runs on main) also publish the web installer,
+# with freshly built firmware, to GitHub Pages.
 
 on:
   push:
-    branches:
-      - main
-    paths:
-      - 'web-installer/**'
-      - '.github/workflows/build-and-deploy.yml'
-  release:
-    types: [published]
+  pull_request:
   workflow_dispatch:
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+    # ESP-IDF 5.4.1 + esp-matter; upstream TLED does not pin an esp-matter version
+    container: espressif/esp-matter:release-v1.4.2_idf_v5.4.1
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build firmware
+        shell: bash
+        run: |
+          git config --global --add safe.directory '*'
+          . "$IDF_PATH/export.sh"
+          . "$ESP_MATTER_PATH/export.sh"
+          idf.py build
+
+      - name: Collect web installer binaries
+        shell: bash
+        run: |
+          mkdir -p firmware
+          cp build/bootloader/bootloader.bin \
+             build/partition_table/partition-table.bin \
+             build/ota_data_initial.bin \
+             build/tled.bin \
+             firmware/
+
+      - name: Upload firmware
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: firmware/
+
   deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     permissions:
@@ -28,10 +61,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Update version in manifest
-        if: github.event_name == 'release'
+      - name: Download firmware
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware
+          path: web-installer/firmware/
+
+      - name: Set version in manifest
         run: |
-          sed -i 's/"version": ".*"/"version": "${{ github.event.release.tag_name }}"/' web-installer/manifest.json
+          VERSION=$(grep 'set(PROJECT_VER ' CMakeLists.txt | grep -o '"[^"]*"' | tr -d '"')
+          VERSION="${VERSION}-${GITHUB_SHA::7}"
+          sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" web-installer/manifest.json
+          echo "Publishing firmware version ${VERSION}"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

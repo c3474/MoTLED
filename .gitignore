@@ -21,7 +21,8 @@ dependencies.lock
 .DS_Store
 Thumbs.db
 
-# Web installer firmware variants (built locally for variants)
+# Web installer firmware (built by CI, or locally via copy-firmware.sh)
+web-installer/firmware/
 web-installer/firmware-*/
 
 # Local tool config
