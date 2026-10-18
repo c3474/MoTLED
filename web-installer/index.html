@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TLED - Matter-over-Thread LED Controller</title>
+    <title>MoTLED - Matter-over-Thread LED Controller</title>
     <script type="module" src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -102,46 +102,35 @@
             margin-bottom: 1rem;
         }
 
+        /* LED-matrix logo: lit LEDs breathe (brightness only, no color or chase effects) */
         .logo {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 4.5rem;
-            font-weight: 700;
-            letter-spacing: -0.02em;
-            color: var(--cyan);
-            text-shadow:
-                0 0 20px var(--cyan-glow),
-                0 0 40px var(--cyan-dim),
-                0 0 60px var(--cyan-dim);
-            animation: flicker 4s infinite;
-            position: relative;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
         }
 
-        .logo::before {
-            content: 'TLED';
-            position: absolute;
-            top: 0;
-            left: 0;
-            color: var(--cyan);
-            opacity: 0.5;
-            animation: glitch 3s infinite;
-            clip-path: inset(0 0 50% 0);
+        .logo-matrix {
+            width: min(420px, 80vw);
+            height: auto;
         }
 
-        @keyframes flicker {
+        .logo-matrix .led-off {
+            fill: var(--bg-elevated);
+        }
+
+        .logo-matrix .led-on {
+            fill: var(--cyan);
+            filter: drop-shadow(0 0 4px var(--cyan-glow));
+            animation: breathe 3.5s ease-in-out infinite;
+        }
+
+        @keyframes breathe {
             0%, 100% { opacity: 1; }
-            92% { opacity: 1; }
-            93% { opacity: 0.8; }
-            94% { opacity: 1; }
-            96% { opacity: 0.9; }
-            97% { opacity: 1; }
+            50% { opacity: 0.45; }
         }
 
-        @keyframes glitch {
-            0%, 100% { transform: translate(0); }
-            20% { transform: translate(-2px, 1px); }
-            40% { transform: translate(2px, -1px); }
-            60% { transform: translate(-1px, 2px); }
-            80% { transform: translate(1px, -2px); }
+        @media (prefers-reduced-motion: reduce) {
+            .logo-matrix .led-on { animation: none; }
         }
 
         .version-badge {
@@ -827,7 +816,6 @@
 
         /* Responsive */
         @media (max-width: 600px) {
-            .logo { font-size: 3rem; }
             .config-row { grid-template-columns: 1fr; }
             .features { grid-template-columns: 1fr; }
             .cmd-list p {
@@ -841,7 +829,13 @@
     <div class="container">
         <header>
             <div class="logo-container">
-                <div class="logo">TLED<span class="version-badge">v0.7.1</span></div>
+                <div class="logo">
+                <svg class="logo-matrix" viewBox="0 0 420 84" role="img" aria-label="MoTLED">
+                    <g class="led-off"><circle cx="18" cy="6" r="4.5"/><circle cx="18" cy="30" r="4.5"/><circle cx="18" cy="42" r="4.5"/><circle cx="18" cy="54" r="4.5"/><circle cx="18" cy="66" r="4.5"/><circle cx="18" cy="78" r="4.5"/><circle cx="30" cy="6" r="4.5"/><circle cx="30" cy="18" r="4.5"/><circle cx="30" cy="54" r="4.5"/><circle cx="30" cy="66" r="4.5"/><circle cx="30" cy="78" r="4.5"/><circle cx="42" cy="6" r="4.5"/><circle cx="42" cy="30" r="4.5"/><circle cx="42" cy="42" r="4.5"/><circle cx="42" cy="54" r="4.5"/><circle cx="42" cy="66" r="4.5"/><circle cx="42" cy="78" r="4.5"/><circle cx="66" cy="6" r="4.5"/><circle cx="66" cy="18" r="4.5"/><circle cx="66" cy="30" r="4.5"/><circle cx="66" cy="42" r="4.5"/><circle cx="66" cy="54" r="4.5"/><circle cx="66" cy="66" r="4.5"/><circle cx="66" cy="78" r="4.5"/><circle cx="78" cy="6" r="4.5"/><circle cx="78" cy="18" r="4.5"/><circle cx="78" cy="30" r="4.5"/><circle cx="78" cy="78" r="4.5"/><circle cx="90" cy="6" r="4.5"/><circle cx="90" cy="18" r="4.5"/><circle cx="90" cy="42" r="4.5"/><circle cx="90" cy="54" r="4.5"/><circle cx="90" cy="66" r="4.5"/><circle cx="102" cy="6" r="4.5"/><circle cx="102" cy="18" r="4.5"/><circle cx="102" cy="42" r="4.5"/><circle cx="102" cy="54" r="4.5"/><circle cx="102" cy="66" r="4.5"/><circle cx="114" cy="6" r="4.5"/><circle cx="114" cy="18" r="4.5"/><circle cx="114" cy="42" r="4.5"/><circle cx="114" cy="54" r="4.5"/><circle cx="114" cy="66" r="4.5"/><circle cx="126" cy="6" r="4.5"/><circle cx="126" cy="18" r="4.5"/><circle cx="126" cy="30" r="4.5"/><circle cx="126" cy="78" r="4.5"/><circle cx="138" cy="6" r="4.5"/><circle cx="138" cy="18" r="4.5"/><circle cx="138" cy="30" r="4.5"/><circle cx="138" cy="42" r="4.5"/><circle cx="138" cy="54" r="4.5"/><circle cx="138" cy="66" r="4.5"/><circle cx="138" cy="78" r="4.5"/><circle cx="150" cy="18" r="4.5"/><circle cx="150" cy="30" r="4.5"/><circle cx="150" cy="42" r="4.5"/><circle cx="150" cy="54" r="4.5"/><circle cx="150" cy="66" r="4.5"/><circle cx="150" cy="78" r="4.5"/><circle cx="162" cy="18" r="4.5"/><circle cx="162" cy="30" r="4.5"/><circle cx="162" cy="42" r="4.5"/><circle cx="162" cy="54" r="4.5"/><circle cx="162" cy="66" r="4.5"/><circle cx="162" cy="78" r="4.5"/><circle cx="186" cy="18" r="4.5"/><circle cx="186" cy="30" r="4.5"/><circle cx="186" cy="42" r="4.5"/><circle cx="186" cy="54" r="4.5"/><circle cx="186" cy="66" r="4.5"/><circle cx="186" cy="78" r="4.5"/><circle cx="198" cy="18" r="4.5"/><circle cx="198" cy="30" r="4.5"/><circle cx="198" cy="42" r="4.5"/><circle cx="198" cy="54" r="4.5"/><circle cx="198" cy="66" r="4.5"/><circle cx="198" cy="78" r="4.5"/><circle cx="210" cy="6" r="4.5"/><circle cx="210" cy="18" r="4.5"/><circle cx="210" cy="30" r="4.5"/><circle cx="210" cy="42" r="4.5"/><circle cx="210" cy="54" r="4.5"/><circle cx="210" cy="66" r="4.5"/><circle cx="210" cy="78" r="4.5"/><circle cx="234" cy="6" r="4.5"/><circle cx="234" cy="18" r="4.5"/><circle cx="234" cy="30" r="4.5"/><circle cx="234" cy="42" r="4.5"/><circle cx="234" cy="54" r="4.5"/><circle cx="234" cy="66" r="4.5"/><circle cx="246" cy="6" r="4.5"/><circle cx="246" cy="18" r="4.5"/><circle cx="246" cy="30" r="4.5"/><circle cx="246" cy="42" r="4.5"/><circle cx="246" cy="54" r="4.5"/><circle cx="246" cy="66" r="4.5"/><circle cx="258" cy="6" r="4.5"/><circle cx="258" cy="18" r="4.5"/><circle cx="258" cy="30" r="4.5"/><circle cx="258" cy="42" r="4.5"/><circle cx="258" cy="54" r="4.5"/><circle cx="258" cy="66" r="4.5"/><circle cx="270" cy="6" r="4.5"/><circle cx="270" cy="18" r="4.5"/><circle cx="270" cy="30" r="4.5"/><circle cx="270" cy="42" r="4.5"/><circle cx="270" cy="54" r="4.5"/><circle cx="270" cy="66" r="4.5"/><circle cx="282" cy="6" r="4.5"/><circle cx="282" cy="18" r="4.5"/><circle cx="282" cy="30" r="4.5"/><circle cx="282" cy="42" r="4.5"/><circle cx="282" cy="54" r="4.5"/><circle cx="282" cy="66" r="4.5"/><circle cx="282" cy="78" r="4.5"/><circle cx="306" cy="18" r="4.5"/><circle cx="306" cy="30" r="4.5"/><circle cx="306" cy="54" r="4.5"/><circle cx="306" cy="66" r="4.5"/><circle cx="318" cy="18" r="4.5"/><circle cx="318" cy="30" r="4.5"/><circle cx="318" cy="54" r="4.5"/><circle cx="318" cy="66" r="4.5"/><circle cx="330" cy="18" r="4.5"/><circle cx="330" cy="30" r="4.5"/><circle cx="330" cy="54" r="4.5"/><circle cx="330" cy="66" r="4.5"/><circle cx="342" cy="18" r="4.5"/><circle cx="342" cy="30" r="4.5"/><circle cx="342" cy="42" r="4.5"/><circle cx="342" cy="54" r="4.5"/><circle cx="342" cy="66" r="4.5"/><circle cx="354" cy="6" r="4.5"/><circle cx="354" cy="18" r="4.5"/><circle cx="354" cy="30" r="4.5"/><circle cx="354" cy="42" r="4.5"/><circle cx="354" cy="54" r="4.5"/><circle cx="354" cy="66" r="4.5"/><circle cx="354" cy="78" r="4.5"/><circle cx="378" cy="18" r="4.5"/><circle cx="378" cy="30" r="4.5"/><circle cx="378" cy="42" r="4.5"/><circle cx="378" cy="54" r="4.5"/><circle cx="378" cy="66" r="4.5"/><circle cx="390" cy="18" r="4.5"/><circle cx="390" cy="30" r="4.5"/><circle cx="390" cy="42" r="4.5"/><circle cx="390" cy="54" r="4.5"/><circle cx="390" cy="66" r="4.5"/><circle cx="402" cy="18" r="4.5"/><circle cx="402" cy="30" r="4.5"/><circle cx="402" cy="42" r="4.5"/><circle cx="402" cy="54" r="4.5"/><circle cx="402" cy="66" r="4.5"/><circle cx="414" cy="6" r="4.5"/><circle cx="414" cy="78" r="4.5"/></g>
+                    <g class="led-on"><circle cx="6" cy="6" r="4.5"/><circle cx="6" cy="18" r="4.5"/><circle cx="6" cy="30" r="4.5"/><circle cx="6" cy="42" r="4.5"/><circle cx="6" cy="54" r="4.5"/><circle cx="6" cy="66" r="4.5"/><circle cx="6" cy="78" r="4.5"/><circle cx="18" cy="18" r="4.5"/><circle cx="30" cy="30" r="4.5"/><circle cx="30" cy="42" r="4.5"/><circle cx="42" cy="18" r="4.5"/><circle cx="54" cy="6" r="4.5"/><circle cx="54" cy="18" r="4.5"/><circle cx="54" cy="30" r="4.5"/><circle cx="54" cy="42" r="4.5"/><circle cx="54" cy="54" r="4.5"/><circle cx="54" cy="66" r="4.5"/><circle cx="54" cy="78" r="4.5"/><circle cx="78" cy="42" r="4.5"/><circle cx="78" cy="54" r="4.5"/><circle cx="78" cy="66" r="4.5"/><circle cx="90" cy="30" r="4.5"/><circle cx="90" cy="78" r="4.5"/><circle cx="102" cy="30" r="4.5"/><circle cx="102" cy="78" r="4.5"/><circle cx="114" cy="30" r="4.5"/><circle cx="114" cy="78" r="4.5"/><circle cx="126" cy="42" r="4.5"/><circle cx="126" cy="54" r="4.5"/><circle cx="126" cy="66" r="4.5"/><circle cx="150" cy="6" r="4.5"/><circle cx="162" cy="6" r="4.5"/><circle cx="174" cy="6" r="4.5"/><circle cx="174" cy="18" r="4.5"/><circle cx="174" cy="30" r="4.5"/><circle cx="174" cy="42" r="4.5"/><circle cx="174" cy="54" r="4.5"/><circle cx="174" cy="66" r="4.5"/><circle cx="174" cy="78" r="4.5"/><circle cx="186" cy="6" r="4.5"/><circle cx="198" cy="6" r="4.5"/><circle cx="222" cy="6" r="4.5"/><circle cx="222" cy="18" r="4.5"/><circle cx="222" cy="30" r="4.5"/><circle cx="222" cy="42" r="4.5"/><circle cx="222" cy="54" r="4.5"/><circle cx="222" cy="66" r="4.5"/><circle cx="222" cy="78" r="4.5"/><circle cx="234" cy="78" r="4.5"/><circle cx="246" cy="78" r="4.5"/><circle cx="258" cy="78" r="4.5"/><circle cx="270" cy="78" r="4.5"/><circle cx="294" cy="6" r="4.5"/><circle cx="294" cy="18" r="4.5"/><circle cx="294" cy="30" r="4.5"/><circle cx="294" cy="42" r="4.5"/><circle cx="294" cy="54" r="4.5"/><circle cx="294" cy="66" r="4.5"/><circle cx="294" cy="78" r="4.5"/><circle cx="306" cy="6" r="4.5"/><circle cx="306" cy="42" r="4.5"/><circle cx="306" cy="78" r="4.5"/><circle cx="318" cy="6" r="4.5"/><circle cx="318" cy="42" r="4.5"/><circle cx="318" cy="78" r="4.5"/><circle cx="330" cy="6" r="4.5"/><circle cx="330" cy="42" r="4.5"/><circle cx="330" cy="78" r="4.5"/><circle cx="342" cy="6" r="4.5"/><circle cx="342" cy="78" r="4.5"/><circle cx="366" cy="6" r="4.5"/><circle cx="366" cy="18" r="4.5"/><circle cx="366" cy="30" r="4.5"/><circle cx="366" cy="42" r="4.5"/><circle cx="366" cy="54" r="4.5"/><circle cx="366" cy="66" r="4.5"/><circle cx="366" cy="78" r="4.5"/><circle cx="378" cy="6" r="4.5"/><circle cx="378" cy="78" r="4.5"/><circle cx="390" cy="6" r="4.5"/><circle cx="390" cy="78" r="4.5"/><circle cx="402" cy="6" r="4.5"/><circle cx="402" cy="78" r="4.5"/><circle cx="414" cy="18" r="4.5"/><circle cx="414" cy="30" r="4.5"/><circle cx="414" cy="42" r="4.5"/><circle cx="414" cy="54" r="4.5"/><circle cx="414" cy="66" r="4.5"/></g>
+                </svg>
+                    <span class="version-badge">v0.7.1</span>
+                </div>
             </div>
             <p class="tagline">Matter <span>+</span> Thread <span>+</span> LEDs</p>
         </header>
@@ -880,7 +874,7 @@
                     <h3>Flash Firmware to ESP32-C6</h3>
                     <p>Connect your board via USB and click below. Works directly in Chrome or Edge - no software install needed.</p>
                     <esp-web-install-button manifest="manifest.json">
-                        <button slot="activate">Install TLED</button>
+                        <button slot="activate">Install MoTLED</button>
                         <span slot="unsupported">Web Serial not supported. Use Chrome or Edge on desktop.</span>
                         <span slot="not-allowed">Serial access blocked. Ensure you're using HTTPS.</span>
                     </esp-web-install-button>
@@ -1016,9 +1010,9 @@
         <!-- Help Tab -->
         <div id="help" class="tab-content">
             <div class="card">
-                <h2>What is TLED?</h2>
+                <h2>What is MoTLED?</h2>
                 <div class="help-section">
-                    <p>TLED turns an ESP32-C6 into a smart LED controller using <strong>Matter over Thread</strong>. Control WS2812B, SK6812, and similar strips through Home Assistant, Apple Home, or Google Home.</p>
+                    <p>MoTLED turns an ESP32-C6 into a smart LED controller using <strong>Matter over Thread</strong>. Control WS2812B, SK6812, and similar strips through Home Assistant, Apple Home, or Google Home.</p>
                     <div class="features">
                         <div class="feature">
                             <span class="feature-icon">&#x1F310;</span>

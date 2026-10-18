@@ -78,6 +78,7 @@ jobs:
           VERSION=$(grep 'set(PROJECT_VER ' CMakeLists.txt | grep -o '"[^"]*"' | tr -d '"')
           VERSION="${VERSION}-${GITHUB_SHA::7}"
           sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" web-installer/manifest.json
+          sed -i "s/>v[0-9][^<]*<\/span>/>v${VERSION}<\/span>/" web-installer/index.html
           echo "Publishing firmware version ${VERSION}"
 
       - name: Setup Pages

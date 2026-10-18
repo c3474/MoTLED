@@ -1,5 +1,5 @@
 {
-  "name": "TLED - Matter LED Controller",
+  "name": "MoTLED - Matter LED Controller",
   "version": "0.7.1",
   "home_assistant_domain": "matter",
   "funding_url": "https://github.com/sponsors/your-username",
