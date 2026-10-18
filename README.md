@@ -1,5 +1,11 @@
 # TLED - Matter-over-Thread LED Controller
 
+> **This is MoTLED, a fork of [TLED](https://github.com/maui1911/TLED) by [@maui1911](https://github.com/maui1911).**
+> The original firmware, web installer and documentation are their work, and they deserve the credit.
+> MoTLED is modified with [Claude Code](https://claude.com/claude-code) for additional features,
+> starting with WRGB color orders for WS2814 strips. See [ROADMAP.md](ROADMAP.md) for what's done and planned.
+> Web installer: <https://c3474.github.io/MoTLED/>
+
 A Matter-compatible LED strip controller for ESP32-C6 that works over Thread networking. Control addressable LED strips (WS2812B, SK6812, WS2805, etc.) from Home Assistant, Apple Home, Google Home, or any Matter-compatible smart home platform.
 
 > **Disclaimer:** This entire firmware was written by AI ([Claude](https://claude.ai) by Anthropic). I ([@maui1911](https://github.com/maui1911)) have not read or written a single line of code — I only provided direction, tested on real hardware, and deployed. Use at your own risk.
