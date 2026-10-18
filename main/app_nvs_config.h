@@ -35,6 +35,11 @@ typedef enum {
     WHITE_ORDER_CW_WW = 1,  // W1 = cool white, W2 = warm white
 } tled_white_order_t;
 
+// Position of the white byte within an RGBW pixel (0 = first, 3 = last).
+// Most SK6812 strips send W last (e.g. GRBW); some WS2814 strips send it first (WRGB).
+#define TLED_WHITE_POS_FIRST    0
+#define TLED_WHITE_POS_LAST     3
+
 // Sentinel for "BIN (backup data) pin not used"
 #define TLED_BIN_GPIO_DISABLED  0xFF
 
@@ -70,6 +75,7 @@ typedef struct {
     uint8_t gain_w;             // White channel gain (0-255)
     uint8_t bin_gpio;           // WS2805 backup data GPIO (TLED_BIN_GPIO_DISABLED = off)
     uint8_t white_order;        // WS2805 white channel order (tled_white_order_t)
+    uint8_t white_pos;          // RGBW white byte position (TLED_WHITE_POS_FIRST..LAST)
     char device_name[32];       // Custom device name
     uint8_t config_version;     // Config version for migration
     bool configured;            // True if config has been set
@@ -125,7 +131,8 @@ typedef struct {
 #define TLED_DEFAULT_MANUAL_WHITE   0
 #define TLED_DEFAULT_CHANNEL_GAIN   255
 #define TLED_DEFAULT_WHITE_ORDER    WHITE_ORDER_WW_CW
-#define TLED_CONFIG_VERSION         4  // Bumped for WS2805 (bin_gpio, white_order)
+#define TLED_DEFAULT_WHITE_POS      TLED_WHITE_POS_LAST
+#define TLED_CONFIG_VERSION         5  // Bumped for RGBW white byte position (white_pos)
 
 /**
  * @brief Initialize the config module

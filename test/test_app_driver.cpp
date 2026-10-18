@@ -156,6 +156,46 @@ TEST_CASE("RGBW gains scale converted channels", "[driver][rgbw]")
     TEST_ASSERT_EQUAL_UINT8(15, color.w);
 }
 
+// RGBW white byte position. led_strip sends [g, r, b, w] of the returned
+// struct; these tests check the resulting wire order.
+
+TEST_CASE("White last leaves GRBW unchanged", "[driver][rgbw]")
+{
+    tled_rgbw_color_t out = tled_place_white(10, 20, 30, 40, TLED_WHITE_POS_LAST);
+    TEST_ASSERT_EQUAL_UINT8(10, out.r);
+    TEST_ASSERT_EQUAL_UINT8(20, out.g);
+    TEST_ASSERT_EQUAL_UINT8(30, out.b);
+    TEST_ASSERT_EQUAL_UINT8(40, out.w);
+}
+
+TEST_CASE("WRGB sends white first", "[driver][rgbw]")
+{
+    // "wrgb" = RGB order (remap puts R in .g and G in .r) + white first
+    uint8_t r = 10, g = 20, b = 30, w = 40;
+    tled_rgbw_color_t out = tled_place_white(g, r, b, w, TLED_WHITE_POS_FIRST);
+    // Wire order is [out.g, out.r, out.b, out.w] = [W, R, G, B]
+    TEST_ASSERT_EQUAL_UINT8(w, out.g);
+    TEST_ASSERT_EQUAL_UINT8(r, out.r);
+    TEST_ASSERT_EQUAL_UINT8(g, out.b);
+    TEST_ASSERT_EQUAL_UINT8(b, out.w);
+}
+
+TEST_CASE("White in a middle position", "[driver][rgbw]")
+{
+    // "grwb": GRB order, white third
+    tled_rgbw_color_t out = tled_place_white(10, 20, 30, 40, 2);
+    TEST_ASSERT_EQUAL_UINT8(20, out.g);  // byte 0: G
+    TEST_ASSERT_EQUAL_UINT8(10, out.r);  // byte 1: R
+    TEST_ASSERT_EQUAL_UINT8(40, out.b);  // byte 2: W
+    TEST_ASSERT_EQUAL_UINT8(30, out.w);  // byte 3: B
+}
+
+TEST_CASE("Out-of-range white position falls back to last", "[driver][rgbw]")
+{
+    tled_rgbw_color_t out = tled_place_white(10, 20, 30, 40, 9);
+    TEST_ASSERT_EQUAL_UINT8(40, out.w);
+}
+
 // WS2805 color temperature to warm/cool white mixing (range 153-333 mireds)
 
 TEST_CASE("CT warmest mireds drives warm white only", "[driver][ct]")

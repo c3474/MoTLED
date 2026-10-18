@@ -81,6 +81,36 @@ static inline tled_rgbw_color_t tled_rgb_to_rgbw(uint8_t r, uint8_t g, uint8_t b
     return out;
 }
 
+/**
+ * @brief Position the white byte for strips that don't send W last (e.g. WRGB).
+ *
+ * led_strip in GRBW mode always transmits [green, red, blue, white]. The r/g/b
+ * inputs must already be remapped for the strip's RGB order, so the color bytes
+ * go out as [g, r, b]. This inserts w at white_pos (0 = first byte, 3 = last)
+ * and returns the values to hand to led_strip_set_pixel_rgbw() so the bytes on
+ * the wire come out in the strip's order.
+ */
+static inline tled_rgbw_color_t tled_place_white(uint8_t r, uint8_t g, uint8_t b,
+                                                 uint8_t w, uint8_t white_pos)
+{
+    if (white_pos > TLED_WHITE_POS_LAST) {
+        white_pos = TLED_WHITE_POS_LAST;
+    }
+
+    const uint8_t color[3] = {g, r, b};  // Color bytes in transmit order
+    uint8_t wire[4];
+    for (int i = 0, c = 0; i < 4; i++) {
+        wire[i] = (i == white_pos) ? w : color[c++];
+    }
+
+    tled_rgbw_color_t out;
+    out.g = wire[0];
+    out.r = wire[1];
+    out.b = wire[2];
+    out.w = wire[3];
+    return out;
+}
+
 typedef struct {
     uint8_t ww;
     uint8_t cw;

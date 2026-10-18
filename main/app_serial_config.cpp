@@ -171,6 +171,7 @@ static void print_help(void) {
     serial_write("  set brightness <n> - Set max brightness (1-255)\r\n");
     serial_write("  set type <t>      - Set LED type: ws2812b, ws2811, sk6812, ws2805\r\n");
     serial_write("  set order <o>     - Set RGB order: grb, rgb, brg, rbg, bgr, gbr\r\n");
+    serial_write("                      RGBW: add w where white goes, e.g. wrgb, grbw\r\n");
     serial_write("  set bin <n|off>   - WS2805 BIN backup data GPIO (off = disabled)\r\n");
     serial_write("  set white_order <o> - WS2805 white channels: ww_cw, cw_ww\r\n");
     serial_write("  set name <name>   - Set device name\r\n");
@@ -187,6 +188,65 @@ static void print_help(void) {
     serial_write("\r\n");
 }
 
+// Color order names, indexed by tled_rgb_order_t
+static const char *rgb_order_names[] = {"grb", "rgb", "brg", "rbg", "bgr", "gbr"};
+#define NUM_RGB_ORDERS (sizeof(rgb_order_names) / sizeof(rgb_order_names[0]))
+
+// Parse a color order: 3 letters ("grb") or 4 letters with one 'w' ("wrgb").
+// The 4-letter form is split into an RGB order plus the white byte position;
+// the 3-letter form puts white last, as before.
+static bool parse_order(const char *value, uint8_t *rgb_order, uint8_t *white_pos)
+{
+    char rgb[4] = {0};
+    size_t pos = TLED_WHITE_POS_LAST;
+    size_t len = strlen(value);
+
+    if (len == 4) {
+        const char *w = strchr(value, 'w');
+        if (w == NULL || strchr(w + 1, 'w') != NULL) {
+            return false;
+        }
+        pos = w - value;
+        for (size_t i = 0, j = 0; i < len; i++) {
+            if (i != pos) {
+                rgb[j++] = value[i];
+            }
+        }
+    } else if (len == 3) {
+        memcpy(rgb, value, 3);
+    } else {
+        return false;
+    }
+
+    for (size_t i = 0; i < NUM_RGB_ORDERS; i++) {
+        if (strcmp(rgb, rgb_order_names[i]) == 0) {
+            *rgb_order = (uint8_t)i;
+            *white_pos = (uint8_t)pos;
+            return true;
+        }
+    }
+    return false;
+}
+
+// Format the color order, inserting 'w' when white isn't in the default last position
+static void format_order(const tled_config_t *cfg, char *out, size_t out_size)
+{
+    if (cfg->rgb_order >= NUM_RGB_ORDERS) {
+        snprintf(out, out_size, "unknown");
+        return;
+    }
+    const char *rgb = rgb_order_names[cfg->rgb_order];
+    if (cfg->white_pos == TLED_WHITE_POS_LAST) {
+        snprintf(out, out_size, "%s", rgb);
+        return;
+    }
+    char order[5] = {0};
+    for (int i = 0, j = 0; i < 4; i++) {
+        order[i] = (i == cfg->white_pos) ? 'w' : rgb[j++];
+    }
+    snprintf(out, out_size, "%s", order);
+}
+
 static void print_config(void) {
     const tled_config_t *cfg = tled_config_get();
 
@@ -198,15 +258,8 @@ static void print_config(void) {
         case CHIPSET_WS2805: type_str = "ws2805"; break;
     }
 
-    const char *order_str = "unknown";
-    switch (cfg->rgb_order) {
-        case RGB_ORDER_GRB: order_str = "grb"; break;
-        case RGB_ORDER_RGB: order_str = "rgb"; break;
-        case RGB_ORDER_BRG: order_str = "brg"; break;
-        case RGB_ORDER_RBG: order_str = "rbg"; break;
-        case RGB_ORDER_BGR: order_str = "bgr"; break;
-        case RGB_ORDER_GBR: order_str = "gbr"; break;
-    }
+    char order_str[8];
+    format_order(cfg, order_str, sizeof(order_str));
 
     const char *poweron_str = "unknown";
     switch (cfg->power_on_behavior) {
@@ -338,26 +391,17 @@ static void handle_set_command(const char *param, const char *value) {
         }
     }
     else if (strcmp(param, "order") == 0) {
-        if (strcmp(value, "grb") == 0) {
-            cfg->rgb_order = RGB_ORDER_GRB;
-            serial_write("Set order = grb\r\n");
-        } else if (strcmp(value, "rgb") == 0) {
-            cfg->rgb_order = RGB_ORDER_RGB;
-            serial_write("Set order = rgb\r\n");
-        } else if (strcmp(value, "brg") == 0) {
-            cfg->rgb_order = RGB_ORDER_BRG;
-            serial_write("Set order = brg\r\n");
-        } else if (strcmp(value, "rbg") == 0) {
-            cfg->rgb_order = RGB_ORDER_RBG;
-            serial_write("Set order = rbg\r\n");
-        } else if (strcmp(value, "bgr") == 0) {
-            cfg->rgb_order = RGB_ORDER_BGR;
-            serial_write("Set order = bgr\r\n");
-        } else if (strcmp(value, "gbr") == 0) {
-            cfg->rgb_order = RGB_ORDER_GBR;
-            serial_write("Set order = gbr\r\n");
+        uint8_t rgb_order, white_pos;
+        if (parse_order(value, &rgb_order, &white_pos)) {
+            cfg->rgb_order = rgb_order;
+            cfg->white_pos = white_pos;
+            serial_printf("Set order = %s\r\n", value);
+            if (white_pos != TLED_WHITE_POS_LAST && cfg->chipset != CHIPSET_SK6812) {
+                serial_write("Note: white position only applies to type sk6812 (RGBW)\r\n");
+            }
         } else {
-            serial_write("Error: order must be grb, rgb, brg, rbg, bgr, or gbr\r\n");
+            serial_write("Error: order must be grb, rgb, brg, rbg, bgr, gbr,\r\n");
+            serial_write("       or 4 letters with one w for RGBW (e.g. wrgb, grbw)\r\n");
         }
     }
     else if (strcmp(param, "name") == 0) {

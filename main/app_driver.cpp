@@ -114,6 +114,7 @@ typedef struct {
     uint8_t gain_w;
     uint8_t bin_gpio;       // WS2805 backup data GPIO (TLED_BIN_GPIO_DISABLED = off)
     uint8_t white_order;    // WS2805 white channel order (tled_white_order_t)
+    uint8_t white_pos;      // RGBW white byte position (0 = first, 3 = last)
 
     // Debounce state for HSV updates (issue 7)
     bool hsv_update_pending;
@@ -154,6 +155,7 @@ static light_driver_t s_light_driver = {
     .gain_w = TLED_DEFAULT_CHANNEL_GAIN,
     .bin_gpio = TLED_BIN_GPIO_DISABLED,
     .white_order = TLED_DEFAULT_WHITE_ORDER,
+    .white_pos = TLED_DEFAULT_WHITE_POS,
     .hsv_update_pending = false,
     .hsv_update_time = 0,
     .nvs_save_pending = false,
@@ -375,7 +377,8 @@ static esp_err_t driver_set_pixel(light_driver_t *driver, int index,
                                                   driver->gain_w);
         uint8_t mr, mg, mb;
         remap_rgb_order(driver->rgb_order, rgbw.r, rgbw.g, rgbw.b, &mr, &mg, &mb);
-        return led_strip_set_pixel_rgbw(driver->strip, index, mr, mg, mb, rgbw.w);
+        tled_rgbw_color_t out = tled_place_white(mr, mg, mb, rgbw.w, driver->white_pos);
+        return led_strip_set_pixel_rgbw(driver->strip, index, out.r, out.g, out.b, out.w);
     }
     // Apply RGB order remapping
     uint8_t mr, mg, mb;
@@ -1250,6 +1253,7 @@ app_driver_handle_t app_driver_light_init(void)
     s_light_driver.gain_w = config->gain_w;
     s_light_driver.bin_gpio = config->bin_gpio;
     s_light_driver.white_order = config->white_order;
+    s_light_driver.white_pos = config->white_pos;
 
     static const char *rgb_order_names[] = {"GRB", "RGB", "BRG", "RBG", "BGR", "GBR"};
     static const char *white_mode_names[] = {"accurate", "brighter", "none", "dual", "max"};
@@ -1257,10 +1261,10 @@ app_driver_handle_t app_driver_light_init(void)
                              ? rgb_order_names[s_light_driver.rgb_order] : "???";
     const char *white_mode_name = (s_light_driver.white_mode <= WHITE_MODE_MAX)
                                   ? white_mode_names[s_light_driver.white_mode] : "???";
-    ESP_LOGI(TAG, "Initializing LED strip driver on GPIO%d with %d LEDs (max brightness %d, order %s, white mode %s, gains %d/%d/%d/%d)",
+    ESP_LOGI(TAG, "Initializing LED strip driver on GPIO%d with %d LEDs (max brightness %d, order %s, white pos %d, white mode %s, gains %d/%d/%d/%d)",
              s_light_driver.gpio_pin, s_light_driver.num_leds, s_light_driver.max_brightness,
-             order_name, white_mode_name, s_light_driver.gain_r, s_light_driver.gain_g,
-             s_light_driver.gain_b, s_light_driver.gain_w);
+             order_name, s_light_driver.white_pos, white_mode_name, s_light_driver.gain_r,
+             s_light_driver.gain_g, s_light_driver.gain_b, s_light_driver.gain_w);
 
     // Create mutex for thread-safe access
     s_light_driver.mutex = xSemaphoreCreateMutex();
