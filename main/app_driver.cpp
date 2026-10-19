@@ -992,10 +992,19 @@ esp_err_t app_driver_light_set_effect(app_driver_handle_t handle, uint8_t effect
     driver->effect_id = effect_id;
     driver->effect_step = 0;
     driver->transition.transitioning = false;
+    uint8_t hue = driver->hue;
+    uint8_t sat = driver->saturation;
+    uint8_t bri = driver->brightness;
 
     ESP_LOGI(TAG, "Effect set to %d", effect_id);
 
     xSemaphoreGive(driver->mutex);
+
+    // Turning effects off fades back to the current color instead of
+    // leaving the strip frozen on the effect's last frame
+    if (effect_id == TLED_EFFECT_NONE) {
+        start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
+    }
 
     return ESP_OK;
 }

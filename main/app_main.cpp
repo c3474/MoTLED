@@ -371,7 +371,7 @@ extern "C" void app_main()
 #endif
 
     /* Initialize serial configuration interface */
-    serial_config_init();
+    serial_config_init(light_handle);
 
     /* Initialize health monitoring (watchdog, heap, thermal) */
     monitoring_init();

@@ -5,6 +5,7 @@
 
 #include "app_serial_config.h"
 #include "app_nvs_config.h"
+#include "app_config.h"
 
 #include <cstring>
 #include <cstdlib>
@@ -23,6 +24,11 @@ static const char *TAG = "serial_config";
 #define CMD_BUF_SIZE 128
 
 static bool s_config_active = false;
+static app_driver_handle_t s_light_handle = NULL;
+
+// Effect names, indexed by TLED_EFFECT_* (app_config.h)
+static const char *effect_names[] = {"off", "rainbow", "breathing", "candle", "chase"};
+#define NUM_EFFECTS (sizeof(effect_names) / sizeof(effect_names[0]))
 static char s_cmd_buf[CMD_BUF_SIZE];
 static int s_cmd_pos = 0;
 
@@ -31,6 +37,7 @@ static void process_command(const char *cmd);
 static void print_help(void);
 static void print_config(void);
 static void handle_set_command(const char *param, const char *value);
+static void handle_effect_command(const char *name);
 static const char *white_mode_to_str(uint8_t mode);
 
 static void serial_write(const char *str) {
@@ -141,6 +148,9 @@ static void process_command(const char *cmd) {
             serial_printf("Error saving config: %s\r\n", esp_err_to_name(err));
         }
     }
+    else if (strcmp(command, "effect") == 0) {
+        handle_effect_command(parsed >= 2 ? param : NULL);
+    }
     else if (strcmp(command, "reboot") == 0) {
         serial_write("Rebooting...\r\n");
         vTaskDelay(pdMS_TO_TICKS(500));
@@ -159,6 +169,28 @@ static void process_command(const char *cmd) {
         serial_printf("Unknown command: %s\r\n", command);
         serial_write("Type 'help' for available commands\r\n");
     }
+}
+
+// Start or stop a built-in effect (testing aid; not saved, and any change
+// from the Home app stops the effect)
+static void handle_effect_command(const char *name) {
+    if (s_light_handle == NULL) {
+        serial_write("Error: LED driver not available\r\n");
+        return;
+    }
+    if (name == NULL) {
+        uint8_t current = app_driver_light_get_effect(s_light_handle);
+        serial_printf("effect = %s\r\n", current < NUM_EFFECTS ? effect_names[current] : "unknown");
+        return;
+    }
+    for (size_t i = 0; i < NUM_EFFECTS; i++) {
+        if (strcmp(name, effect_names[i]) == 0) {
+            app_driver_light_set_effect(s_light_handle, (uint8_t)i);
+            serial_printf("Set effect = %s\r\n", name);
+            return;
+        }
+    }
+    serial_write("Error: effect must be rainbow, breathing, candle, chase, or off\r\n");
 }
 
 static void print_help(void) {
@@ -182,6 +214,8 @@ static void print_help(void) {
     serial_write("  set gain_g <n>    - Green channel gain (0-255)\r\n");
     serial_write("  set gain_b <n>    - Blue channel gain (0-255)\r\n");
     serial_write("  set gain_w <n>    - White channel gain (0-255)\r\n");
+    serial_write("  effect [name]     - Run effect: rainbow, breathing, candle, chase, off\r\n");
+    serial_write("                      (testing aid; not saved, Home app changes stop it)\r\n");
     serial_write("  save              - Save config and reboot\r\n");
     serial_write("  reboot            - Reboot without saving\r\n");
     serial_write("  factory           - Reset to factory defaults\r\n");
@@ -473,7 +507,9 @@ static void handle_set_command(const char *param, const char *value) {
     }
 }
 
-esp_err_t serial_config_init(void) {
+esp_err_t serial_config_init(app_driver_handle_t light_handle) {
+    s_light_handle = light_handle;
+
     // Configure USB Serial JTAG
     usb_serial_jtag_driver_config_t cfg = {
         .tx_buffer_size = SERIAL_BUF_SIZE,
