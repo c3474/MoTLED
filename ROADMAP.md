@@ -19,9 +19,12 @@ once it is merged and tested on the strip.
       for a WS2814. The type reads "SK6812 / WS2814 (RGBW)" on the web
       page, with a hint pointing to the white-first orders. No firmware type:
       a WS2814 only differs from an SK6812 in byte order, which is a setting.
-- [ ] **M-3 Bench test.** Flash from the web installer without erasing, so the
+- [x] **M-3 Bench test.** Flash from the web installer without erasing, so the
       Apple Home pairing survives. Check red, green, blue and white, dimming,
       and all 100 pixels lighting evenly.
+- [ ] **M-3b Low-end dimming.** At 1% in Apple Home the strip looks off;
+      2% is a nice dim glow. Likely the brightness scaling rounds the lowest
+      levels to 0. Make sure "on" always lights at least the dimmest step.
 - [ ] **M-4 Offer upstream.** Open a PR or issue on `maui1911/TLED` with the
       color-order change.
 
