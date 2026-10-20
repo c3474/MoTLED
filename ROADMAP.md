@@ -30,16 +30,28 @@ once it is merged and tested on the strip.
 
 ## Phase 2: features
 
-- [ ] **M-5 Split colors (segments).** Divide the strip into segments, each
-      with its own color. Likely approach: one Matter light endpoint per
-      segment, which Apple Home shows as separate lights that can be grouped.
-      *Needs research:* the endpoint count, NVS layout, and how re-pairing
-      behaves when segments change.
-- [ ] **M-6 Animations.** The firmware already has rainbow, breathing,
-      candle and chase, but they cannot be reached from a controller.
-      Matter has no "effect" control that Apple Home shows. *Needs research:*
-      candidate triggers are extra on/off endpoints (one per effect), Matter
-      Scenes, or a serial/BLE command.
+Priorities come from what permanent-lighting products (Govee, Trimlight,
+JellyFish) and WLED put front and center: repeating multi-color patterns
+first, then motion on top of them. No hard usage statistics were found.
+
+- [ ] **M-5 Color patterns (top priority).** 2-4 colors repeating along the
+      strip in groups of N pixels, e.g. red/green for Christmas, orange/purple
+      for Halloween, red/white/blue for July 4th, plus a static rainbow.
+      *Decide:* how colors are chosen from Apple Home (saved themes, each a
+      Home switch, with colors set on the web page; or "Color 1-4" lights in
+      Home that feed the pattern).
+- [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
+  - [x] Step 1: serial `effect` command; all four upstream effects work.
+  - [ ] **Chase for patterns:** the color pattern slides along the strip;
+        covers "rainbow chase" and moving holiday patterns.
+  - [ ] **Twinkle:** random LEDs sparkle over the pattern or a base color.
+  - [ ] **Smooth breathing/fades:** breathing steps through only ~100
+        brightness levels with no gamma correction, so it looks stuttery,
+        especially when dim. Compute at full 0-255 resolution with a gamma
+        curve.
+  - [ ] Expose chosen effects in Apple Home as one on/off switch per effect
+        (requires one re-pair).
+  - Lower priority: single-dot chase, candle (possible Halloween use).
 - [ ] **M-7 Firmware updates without USB (OTA).** The partition table already
       has two OTA slots and the Matter OTA requestor is enabled. Upstream
       reports that Matter OTA crashes partway through the download on the
