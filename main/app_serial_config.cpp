@@ -38,6 +38,7 @@ static void print_help(void);
 static void print_config(void);
 static void handle_set_command(const char *param, const char *value);
 static void handle_effect_command(const char *name);
+static void handle_pattern_command(const char *args);
 static const char *white_mode_to_str(uint8_t mode);
 
 static void serial_write(const char *str) {
@@ -118,6 +119,12 @@ static void process_command(const char *cmd) {
         return;
     }
 
+    // 'pattern' takes more arguments than the generic parser below handles
+    if (strncmp(cmd, "pattern", 7) == 0 && (cmd[7] == '\0' || cmd[7] == ' ')) {
+        handle_pattern_command(cmd + 7);
+        return;
+    }
+
     // Parse command
     char command[32] = {0};
     char param[32] = {0};
@@ -193,6 +200,111 @@ static void handle_effect_command(const char *name) {
     serial_write("Error: effect must be rainbow, breathing, candle, chase, or off\r\n");
 }
 
+// Named colors for the 'pattern' command (RGB 0-255)
+static const struct {
+    const char *name;
+    uint8_t rgb[3];
+} named_colors[] = {
+    {"red",    {255, 0, 0}},
+    {"orange", {255, 80, 0}},
+    {"yellow", {255, 180, 0}},
+    {"green",  {0, 255, 0}},
+    {"cyan",   {0, 255, 255}},
+    {"blue",   {0, 0, 255}},
+    {"purple", {140, 0, 255}},
+    {"pink",   {255, 40, 120}},
+    {"white",  {255, 255, 255}},
+};
+#define NUM_NAMED_COLORS (sizeof(named_colors) / sizeof(named_colors[0]))
+
+// Parse a color name or 6-digit hex value (e.g. ff8800)
+static bool parse_color(const char *token, uint8_t rgb[3])
+{
+    for (size_t i = 0; i < NUM_NAMED_COLORS; i++) {
+        if (strcmp(token, named_colors[i].name) == 0) {
+            memcpy(rgb, named_colors[i].rgb, 3);
+            return true;
+        }
+    }
+    if (strlen(token) == 6 && strspn(token, "0123456789abcdefABCDEF") == 6) {
+        unsigned long v = strtoul(token, NULL, 16);
+        rgb[0] = (v >> 16) & 0xFF;
+        rgb[1] = (v >> 8) & 0xFF;
+        rgb[2] = v & 0xFF;
+        return true;
+    }
+    return false;
+}
+
+// Show a multi-color pattern (testing aid; not saved):
+//   pattern <color> [color] [color] [color] [alt <n> | blocks]
+//   pattern off
+static void handle_pattern_command(const char *args) {
+    if (s_light_handle == NULL) {
+        serial_write("Error: LED driver not available\r\n");
+        return;
+    }
+
+    char buf[CMD_BUF_SIZE];
+    strncpy(buf, args, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    uint8_t colors[TLED_PATTERN_MAX_COLORS][3];
+    uint8_t count = 0;
+    uint8_t layout = PATTERN_LAYOUT_ALTERNATE;
+    int group = TLED_PATTERN_DEFAULT_GROUP;
+
+    char *save = NULL;
+    char *tok = strtok_r(buf, " ", &save);
+    if (tok == NULL) {
+        serial_write("Usage: pattern <color> [color] [color] [color] [alt <n> | blocks]\r\n");
+        serial_write("       pattern off\r\n");
+        serial_write("Colors: red orange yellow green cyan blue purple pink white, or hex like ff8800\r\n");
+        return;
+    }
+    if (strcmp(tok, "off") == 0) {
+        app_driver_light_set_pattern(s_light_handle, colors, 0, layout, (uint8_t)group);
+        serial_write("Pattern off\r\n");
+        return;
+    }
+
+    for (; tok != NULL; tok = strtok_r(NULL, " ", &save)) {
+        if (strcmp(tok, "blocks") == 0) {
+            layout = PATTERN_LAYOUT_BLOCKS;
+        } else if (strcmp(tok, "alt") == 0) {
+            layout = PATTERN_LAYOUT_ALTERNATE;
+            char *n = strtok_r(NULL, " ", &save);
+            if (n != NULL) {
+                group = atoi(n);
+                if (group < 1 || group > 255) {
+                    serial_write("Error: alt group must be 1-255 pixels\r\n");
+                    return;
+                }
+            }
+        } else if (count >= TLED_PATTERN_MAX_COLORS) {
+            serial_write("Error: at most 4 colors\r\n");
+            return;
+        } else if (!parse_color(tok, colors[count])) {
+            serial_printf("Error: unknown color '%s'\r\n", tok);
+            return;
+        } else {
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        serial_write("Error: give at least one color\r\n");
+        return;
+    }
+
+    app_driver_light_set_pattern(s_light_handle, colors, count, layout, (uint8_t)group);
+    if (layout == PATTERN_LAYOUT_BLOCKS) {
+        serial_printf("Pattern: %d colors in blocks\r\n", count);
+    } else {
+        serial_printf("Pattern: %d colors alternating every %d pixels\r\n", count, group);
+    }
+}
+
 static void print_help(void) {
     serial_write("\r\n");
     serial_write("Available commands:\r\n");
@@ -216,6 +328,9 @@ static void print_help(void) {
     serial_write("  set gain_w <n>    - White channel gain (0-255)\r\n");
     serial_write("  effect [name]     - Run effect: rainbow, breathing, candle, chase, off\r\n");
     serial_write("                      (testing aid; not saved, Home app changes stop it)\r\n");
+    serial_write("  pattern <colors>  - Show 1-4 colors, e.g. 'pattern red green' or\r\n");
+    serial_write("                      'pattern orange purple blocks' or '... alt 5'\r\n");
+    serial_write("                      'pattern off' returns to one color (not saved)\r\n");
     serial_write("  save              - Save config and reboot\r\n");
     serial_write("  reboot            - Reboot without saving\r\n");
     serial_write("  factory           - Reset to factory defaults\r\n");

@@ -196,6 +196,33 @@ TEST_CASE("Out-of-range white position falls back to last", "[driver][rgbw]")
     TEST_ASSERT_EQUAL_UINT8(40, out.w);
 }
 
+// Multi-color pattern layout
+
+TEST_CASE("Alternating pattern repeats every group of pixels", "[driver][pattern]")
+{
+    // 2 colors, groups of 3: A A A B B B A ...
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(0, 100, 2, PATTERN_LAYOUT_ALTERNATE, 3));
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(2, 100, 2, PATTERN_LAYOUT_ALTERNATE, 3));
+    TEST_ASSERT_EQUAL_UINT8(1, tled_pattern_color_index(3, 100, 2, PATTERN_LAYOUT_ALTERNATE, 3));
+    TEST_ASSERT_EQUAL_UINT8(1, tled_pattern_color_index(5, 100, 2, PATTERN_LAYOUT_ALTERNATE, 3));
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(6, 100, 2, PATTERN_LAYOUT_ALTERNATE, 3));
+}
+
+TEST_CASE("Blocks pattern splits the strip evenly", "[driver][pattern]")
+{
+    // 3 colors over 99 pixels: thirds
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(0, 99, 3, PATTERN_LAYOUT_BLOCKS, 3));
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(32, 99, 3, PATTERN_LAYOUT_BLOCKS, 3));
+    TEST_ASSERT_EQUAL_UINT8(1, tled_pattern_color_index(33, 99, 3, PATTERN_LAYOUT_BLOCKS, 3));
+    TEST_ASSERT_EQUAL_UINT8(2, tled_pattern_color_index(98, 99, 3, PATTERN_LAYOUT_BLOCKS, 3));
+}
+
+TEST_CASE("Single-color pattern always uses the first color", "[driver][pattern]")
+{
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(57, 100, 1, PATTERN_LAYOUT_ALTERNATE, 3));
+    TEST_ASSERT_EQUAL_UINT8(0, tled_pattern_color_index(57, 100, 1, PATTERN_LAYOUT_BLOCKS, 3));
+}
+
 // WS2805 color temperature to warm/cool white mixing (range 153-333 mireds)
 
 TEST_CASE("CT warmest mireds drives warm white only", "[driver][ct]")

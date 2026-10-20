@@ -7,6 +7,7 @@
 #include <driver/gpio.h>
 #include <led_strip.h>
 #include <math.h>
+#include <string.h>
 #include <nvs_flash.h>
 #include <nvs.h>
 #include <freertos/FreeRTOS.h>
@@ -98,6 +99,13 @@ typedef struct {
     transition_state_t transition;
     uint8_t effect_id;
     uint32_t effect_step;
+
+    // Multi-color pattern (pattern_count 0 = off, show the single light color)
+    uint8_t pattern_count;
+    uint8_t pattern_layout;
+    uint8_t pattern_group;
+    uint8_t pattern_colors[TLED_PATTERN_MAX_COLORS][3];
+
     TaskHandle_t task_handle;
     SemaphoreHandle_t mutex;
 
@@ -141,6 +149,10 @@ static light_driver_t s_light_driver = {
     .transition = {0},
     .effect_id = TLED_EFFECT_NONE,
     .effect_step = 0,
+    .pattern_count = 0,
+    .pattern_layout = PATTERN_LAYOUT_ALTERNATE,
+    .pattern_group = TLED_PATTERN_DEFAULT_GROUP,
+    .pattern_colors = {{0}},
     .task_handle = NULL,
     .mutex = NULL,
     .num_leds = TLED_DEFAULT_NUM_LEDS,
@@ -427,6 +439,27 @@ static void apply_max_brightness(light_driver_t *driver, uint8_t *r, uint8_t *g,
     }
 }
 
+// Update strip with the multi-color pattern, scaled by brightness (Matter 0-254 scale)
+static esp_err_t update_strip_pattern(light_driver_t *driver, float val)
+{
+    if (driver->strip == NULL && driver->ws2805 == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    for (int i = 0; i < driver->num_leds; i++) {
+        uint8_t idx = tled_pattern_color_index(i, driver->num_leds, driver->pattern_count,
+                                               driver->pattern_layout, driver->pattern_group);
+        const uint8_t *color = driver->pattern_colors[idx];
+        uint8_t r = (uint8_t)(color[0] * val / MATTER_BRIGHTNESS_MAX);
+        uint8_t g = (uint8_t)(color[1] * val / MATTER_BRIGHTNESS_MAX);
+        uint8_t b = (uint8_t)(color[2] * val / MATTER_BRIGHTNESS_MAX);
+        apply_max_brightness(driver, &r, &g, &b);
+        driver_set_pixel(driver, i, r, g, b, 0, 0);
+    }
+
+    return driver_refresh(driver);
+}
+
 // Compute output channels from color state. In CT mode (WS2805) the white
 // channels render the color temperature and RGB stays off; in HSV mode RGB
 // renders the color and whites stay off.
@@ -710,10 +743,15 @@ static void transition_task(void *arg)
                 );
             }
 
-            // Update strip with interpolated values
-            uint8_t r, g, b, ww, cw;
-            get_interpolated_channels(driver, &r, &g, &b, &ww, &cw);
-            update_strip_channels(driver, r, g, b, ww, cw);
+            // Update strip with interpolated values (the pattern, if one is set,
+            // replaces the single color but still follows power and brightness)
+            if (driver->pattern_count > 0 && driver->color_mode != COLOR_MODE_CT) {
+                update_strip_pattern(driver, driver->transition.current_val);
+            } else {
+                uint8_t r, g, b, ww, cw;
+                get_interpolated_channels(driver, &r, &g, &b, &ww, &cw);
+                update_strip_channels(driver, r, g, b, ww, cw);
+            }
         }
 
         xSemaphoreGive(driver->mutex);
@@ -1006,6 +1044,37 @@ esp_err_t app_driver_light_set_effect(app_driver_handle_t handle, uint8_t effect
         start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
     }
 
+    return ESP_OK;
+}
+
+esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
+                                       const uint8_t colors[][3], uint8_t count,
+                                       uint8_t layout, uint8_t group)
+{
+    light_driver_t *driver = (light_driver_t *)handle;
+    if (driver == NULL || count > TLED_PATTERN_MAX_COLORS ||
+        layout > PATTERN_LAYOUT_BLOCKS || group == 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    xSemaphoreTake(driver->mutex, portMAX_DELAY);
+
+    driver->pattern_count = count;
+    driver->pattern_layout = layout;
+    driver->pattern_group = group;
+    if (count > 0) {
+        memcpy(driver->pattern_colors, colors, (size_t)count * 3);
+    }
+    uint8_t hue = driver->hue;
+    uint8_t sat = driver->saturation;
+    uint8_t bri = driver->brightness;
+
+    ESP_LOGI(TAG, "Pattern set: %d colors, layout %d, group %d", count, layout, group);
+
+    xSemaphoreGive(driver->mutex);
+
+    // Redraw through a transition so the change also stops any running effect
+    start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
     return ESP_OK;
 }
 

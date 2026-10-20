@@ -111,6 +111,35 @@ static inline tled_rgbw_color_t tled_place_white(uint8_t r, uint8_t g, uint8_t b
     return out;
 }
 
+// Multi-color patterns: up to 4 colors laid out along the strip
+#define TLED_PATTERN_MAX_COLORS     4
+#define TLED_PATTERN_DEFAULT_GROUP  3
+
+typedef enum {
+    PATTERN_LAYOUT_ALTERNATE = 0,   // Colors repeat every `group` pixels: A A A B B B A A A ...
+    PATTERN_LAYOUT_BLOCKS = 1,      // Strip split into equal blocks: halves, thirds, quarters
+} tled_pattern_layout_t;
+
+/**
+ * @brief Which pattern color (0..count-1) a pixel shows.
+ *
+ * Pure helper for the output pipeline and unit tests.
+ */
+static inline uint8_t tled_pattern_color_index(uint16_t pixel, uint16_t num_leds, uint8_t count,
+                                               uint8_t layout, uint8_t group)
+{
+    if (count <= 1 || num_leds == 0) {
+        return 0;
+    }
+    if (layout == PATTERN_LAYOUT_BLOCKS) {
+        return (uint8_t)(((uint32_t)pixel * count) / num_leds);
+    }
+    if (group == 0) {
+        group = 1;
+    }
+    return (uint8_t)((pixel / group) % count);
+}
+
 typedef struct {
     uint8_t ww;
     uint8_t cw;
@@ -288,6 +317,22 @@ esp_err_t app_driver_light_set_effect(app_driver_handle_t handle, uint8_t effect
  * @return Current effect ID
  */
 uint8_t app_driver_light_get_effect(app_driver_handle_t handle);
+
+/**
+ * @brief Show a multi-color pattern instead of the single light color
+ *
+ * The pattern follows the light's power and brightness. Not saved across reboots.
+ *
+ * @param handle Driver handle
+ * @param colors RGB colors (0-255 each); ignored when count is 0
+ * @param count Number of colors (1-4), or 0 to turn the pattern off
+ * @param layout Pattern layout (tled_pattern_layout_t)
+ * @param group Pixels per color band for PATTERN_LAYOUT_ALTERNATE (1-255)
+ * @return ESP_OK on success, ESP_ERR_INVALID_ARG on bad arguments
+ */
+esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
+                                       const uint8_t colors[][3], uint8_t count,
+                                       uint8_t layout, uint8_t group);
 
 #ifdef __cplusplus
 }
