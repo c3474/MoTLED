@@ -76,6 +76,8 @@ typedef struct {
     uint8_t bin_gpio;           // WS2805 backup data GPIO (TLED_BIN_GPIO_DISABLED = off)
     uint8_t white_order;        // WS2805 white channel order (tled_white_order_t)
     uint8_t white_pos;          // RGBW white byte position (TLED_WHITE_POS_FIRST..LAST)
+    uint8_t pattern_layout;     // Multi-color pattern layout (0 = alternate, 1 = blocks)
+    uint8_t pattern_group;      // Pixels per color band when alternating (1-255)
     char device_name[32];       // Custom device name
     uint8_t config_version;     // Config version for migration
     bool configured;            // True if config has been set
@@ -132,7 +134,9 @@ typedef struct {
 #define TLED_DEFAULT_CHANNEL_GAIN   255
 #define TLED_DEFAULT_WHITE_ORDER    WHITE_ORDER_WW_CW
 #define TLED_DEFAULT_WHITE_POS      TLED_WHITE_POS_LAST
-#define TLED_CONFIG_VERSION         5  // Bumped for RGBW white byte position (white_pos)
+#define TLED_DEFAULT_PATTERN_LAYOUT 0  // Alternate
+#define TLED_DEFAULT_PATTERN_GROUP  3
+#define TLED_CONFIG_VERSION         6  // Bumped for pattern layout (pattern_layout, pattern_group)
 
 /**
  * @brief Initialize the config module

@@ -47,6 +47,15 @@ static const char *TAG = "tled_driver";
 
 // External reference to light endpoint ID (defined in app_main.cpp)
 extern uint16_t light_endpoint_id;
+extern uint16_t color_slot_endpoint_ids[TLED_PATTERN_MAX_COLORS];
+
+// One "Color N" light in Apple Home; the slots that are on make up the pattern
+typedef struct {
+    bool on;
+    uint8_t level;  // Matter 0-254, balances this color against the others
+    uint8_t hue;    // Matter 0-254
+    uint8_t sat;    // Matter 0-254
+} color_slot_t;
 
 // Color modes (values match the Matter ColorControl ColorMode enum)
 typedef enum {
@@ -105,6 +114,7 @@ typedef struct {
     uint8_t pattern_layout;
     uint8_t pattern_group;
     uint8_t pattern_colors[TLED_PATTERN_MAX_COLORS][3];
+    color_slot_t color_slots[TLED_PATTERN_MAX_COLORS];
 
     TaskHandle_t task_handle;
     SemaphoreHandle_t mutex;
@@ -153,6 +163,7 @@ static light_driver_t s_light_driver = {
     .pattern_layout = PATTERN_LAYOUT_ALTERNATE,
     .pattern_group = TLED_PATTERN_DEFAULT_GROUP,
     .pattern_colors = {{0}},
+    .color_slots = {},
     .task_handle = NULL,
     .mutex = NULL,
     .num_leds = TLED_DEFAULT_NUM_LEDS,
@@ -1114,6 +1125,60 @@ static void app_driver_button_toggle_cb(void *button_handle, void *usr_data)
     });
 }
 
+// Rebuild the pattern from the color slots that are on (none on = single color)
+static void apply_color_slots(light_driver_t *driver)
+{
+    uint8_t colors[TLED_PATTERN_MAX_COLORS][3];
+    uint8_t count = 0;
+
+    xSemaphoreTake(driver->mutex, portMAX_DELAY);
+    for (int i = 0; i < TLED_PATTERN_MAX_COLORS; i++) {
+        const color_slot_t *slot = &driver->color_slots[i];
+        if (!slot->on) {
+            continue;
+        }
+        uint16_t hue = (slot->hue * STANDARD_HUE_MAX) / MATTER_HUE_MAX;
+        uint8_t sat = (slot->sat * STANDARD_SATURATION_MAX) / MATTER_SATURATION_MAX;
+        uint8_t val = (slot->level * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX;
+        hsv_to_rgb(hue, sat, val, &colors[count][0], &colors[count][1], &colors[count][2]);
+        count++;
+    }
+    uint8_t layout = driver->pattern_layout;
+    uint8_t group = driver->pattern_group;
+    xSemaphoreGive(driver->mutex);
+
+    app_driver_light_set_pattern((app_driver_handle_t)driver, colors, count, layout, group);
+}
+
+// Handle an attribute change on one of the "Color N" lights
+static esp_err_t update_color_slot(light_driver_t *driver, int slot_index, uint32_t cluster_id,
+                                   uint32_t attribute_id, esp_matter_attr_val_t *val)
+{
+    color_slot_t *slot = &driver->color_slots[slot_index];
+    bool changed = true;
+
+    xSemaphoreTake(driver->mutex, portMAX_DELAY);
+    if (cluster_id == OnOff::Id && attribute_id == OnOff::Attributes::OnOff::Id) {
+        slot->on = val->val.b;
+    } else if (cluster_id == LevelControl::Id && attribute_id == LevelControl::Attributes::CurrentLevel::Id) {
+        slot->level = val->val.u8;
+    } else if (cluster_id == ColorControl::Id && attribute_id == ColorControl::Attributes::CurrentHue::Id) {
+        slot->hue = val->val.u8;
+    } else if (cluster_id == ColorControl::Id && attribute_id == ColorControl::Attributes::CurrentSaturation::Id) {
+        slot->sat = val->val.u8;
+    } else {
+        changed = false;
+    }
+    xSemaphoreGive(driver->mutex);
+
+    if (changed) {
+        ESP_LOGI(TAG, "Color %d: on=%d level=%d hue=%d sat=%d", slot_index + 1,
+                 slot->on, slot->level, slot->hue, slot->sat);
+        apply_color_slots(driver);
+    }
+    return ESP_OK;
+}
+
 esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle,
                                        uint16_t endpoint_id,
                                        uint32_t cluster_id,
@@ -1126,6 +1191,12 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle,
     if (driver == NULL || driver->mutex == NULL) {
         // Driver not initialized yet - ignore during boot
         return ESP_OK;
+    }
+
+    for (int slot = 0; slot < TLED_PATTERN_MAX_COLORS; slot++) {
+        if (color_slot_endpoint_ids[slot] != 0 && endpoint_id == color_slot_endpoint_ids[slot]) {
+            return update_color_slot(driver, slot, cluster_id, attribute_id, val);
+        }
     }
 
     if (endpoint_id != light_endpoint_id) {
@@ -1186,6 +1257,43 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle,
     }
 
     return err;
+}
+
+esp_err_t app_driver_color_slots_set_defaults(app_driver_handle_t handle)
+{
+    light_driver_t *driver = (light_driver_t *)handle;
+    if (driver == NULL || driver->mutex == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Matter keeps these attributes across reboots; read them back into the driver
+    xSemaphoreTake(driver->mutex, portMAX_DELAY);
+    for (int i = 0; i < TLED_PATTERN_MAX_COLORS; i++) {
+        uint16_t ep = color_slot_endpoint_ids[i];
+        if (ep == 0) {
+            continue;
+        }
+        color_slot_t *slot = &driver->color_slots[i];
+        esp_matter_attr_val_t val;
+        if (attribute::get_val(attribute::get(ep, OnOff::Id, OnOff::Attributes::OnOff::Id), &val) == ESP_OK) {
+            slot->on = val.val.b;
+        }
+        if (attribute::get_val(attribute::get(ep, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id), &val) == ESP_OK) {
+            slot->level = val.val.u8;
+        }
+        if (attribute::get_val(attribute::get(ep, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id), &val) == ESP_OK) {
+            slot->hue = val.val.u8;
+        }
+        if (attribute::get_val(attribute::get(ep, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id), &val) == ESP_OK) {
+            slot->sat = val.val.u8;
+        }
+        ESP_LOGI(TAG, "Restored Color %d: on=%d level=%d hue=%d sat=%d", i + 1,
+                 slot->on, slot->level, slot->hue, slot->sat);
+    }
+    xSemaphoreGive(driver->mutex);
+
+    apply_color_slots(driver);
+    return ESP_OK;
 }
 
 esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id)
@@ -1332,6 +1440,8 @@ app_driver_handle_t app_driver_light_init(void)
     s_light_driver.bin_gpio = config->bin_gpio;
     s_light_driver.white_order = config->white_order;
     s_light_driver.white_pos = config->white_pos;
+    s_light_driver.pattern_layout = config->pattern_layout;
+    s_light_driver.pattern_group = config->pattern_group;
 
     static const char *rgb_order_names[] = {"GRB", "RGB", "BRG", "RBG", "BGR", "GBR"};
     static const char *white_mode_names[] = {"accurate", "brighter", "none", "dual", "max"};

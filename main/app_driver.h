@@ -334,6 +334,16 @@ esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
                                        const uint8_t colors[][3], uint8_t count,
                                        uint8_t layout, uint8_t group);
 
+/**
+ * @brief Load the "Color 1-4" lights' saved state and show their pattern
+ *
+ * Call after Matter has started, alongside app_driver_light_set_defaults().
+ *
+ * @param handle Driver handle
+ * @return ESP_OK on success
+ */
+esp_err_t app_driver_color_slots_set_defaults(app_driver_handle_t handle);
+
 #ifdef __cplusplus
 }
 #endif

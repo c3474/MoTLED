@@ -44,6 +44,7 @@ static const char *TAG = "tled_main";
 // Global endpoint IDs
 uint16_t light_endpoint_id = 0;
 uint16_t temp_sensor_endpoint_id = 0;
+uint16_t color_slot_endpoint_ids[TLED_PATTERN_MAX_COLORS] = {0};  // "Color 1-4" lights
 
 using namespace esp_matter;
 using namespace esp_matter::attribute;
@@ -224,6 +225,37 @@ static esp_err_t app_attribute_update_cb(attribute::callback_type_t type,
     return err;
 }
 
+/* Create a dimmable light with HSV color control (no XY/color temperature,
+ * which cause issues). Returns the endpoint; the ColorControl cluster can be
+ * fetched from it to add more features. */
+static endpoint_t *create_hsv_light(node_t *node, bool on, uint8_t level,
+                                    uint8_t hue, uint8_t sat, void *priv_data)
+{
+    dimmable_light::config_t light_config;
+    light_config.on_off.on_off = on;
+    light_config.on_off_lighting.start_up_on_off = nullptr;
+    light_config.level_control.current_level = level;
+    light_config.level_control.on_level = level;
+    light_config.level_control_lighting.start_up_current_level = nullptr;
+
+    endpoint_t *endpoint = dimmable_light::create(node, &light_config, ENDPOINT_FLAG_NONE, priv_data);
+    if (endpoint == nullptr) {
+        return nullptr;
+    }
+
+    cluster::color_control::config_t color_config;
+    color_config.color_mode = static_cast<uint8_t>(ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation);
+    color_config.enhanced_color_mode = static_cast<uint8_t>(ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation);
+    cluster_t *color_cluster = cluster::color_control::create(endpoint, &color_config, CLUSTER_FLAG_SERVER);
+
+    cluster::color_control::feature::hue_saturation::config_t hs_config;
+    hs_config.current_hue = hue;
+    hs_config.current_saturation = sat;
+    cluster::color_control::feature::hue_saturation::add(color_cluster, &hs_config);
+
+    return endpoint;
+}
+
 extern "C" void app_main()
 {
     esp_err_t err = ESP_OK;
@@ -283,33 +315,13 @@ extern "C" void app_main()
     node_t *node = node::create(&node_config, app_attribute_update_cb, app_identification_cb);
     ABORT_APP_ON_FAILURE(node != nullptr, ESP_LOGE(TAG, "Failed to create Matter node"));
 
-    /* Create Dimmable Light + HSV Color Control
-     * Using dimmable_light as base, then adding ColorControl with HSV only
-     * This avoids XY and ColorTemperature features that cause issues
-     */
-    dimmable_light::config_t light_config;
-    light_config.on_off.on_off = TLED_DEFAULT_POWER;
-    light_config.on_off_lighting.start_up_on_off = nullptr;
-    light_config.level_control.current_level = TLED_DEFAULT_BRIGHTNESS;
-    light_config.level_control.on_level = TLED_DEFAULT_BRIGHTNESS;
-    light_config.level_control_lighting.start_up_current_level = nullptr;
-
-    endpoint_t *endpoint = dimmable_light::create(node, &light_config, ENDPOINT_FLAG_NONE, light_handle);
+    /* Create the main light: dimmable + HSV color (plus ColorTemperature on WS2805) */
+    endpoint_t *endpoint = create_hsv_light(node, TLED_DEFAULT_POWER, TLED_DEFAULT_BRIGHTNESS,
+                                            0, 254, light_handle);
     ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create dimmable light endpoint"));
 
-    /* Add ColorControl cluster with HSV feature (plus ColorTemperature on WS2805) */
     bool has_color_temp = (config->chipset == CHIPSET_WS2805);
-
-    cluster::color_control::config_t color_config;
-    color_config.color_mode = static_cast<uint8_t>(ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation);
-    color_config.enhanced_color_mode = static_cast<uint8_t>(ColorControl::ColorModeEnum::kCurrentHueAndCurrentSaturation);
-    cluster_t *color_cluster = cluster::color_control::create(endpoint, &color_config, CLUSTER_FLAG_SERVER);
-
-    /* Add HSV feature */
-    cluster::color_control::feature::hue_saturation::config_t hs_config;
-    hs_config.current_hue = 0;
-    hs_config.current_saturation = 254;
-    cluster::color_control::feature::hue_saturation::add(color_cluster, &hs_config);
+    cluster_t *color_cluster = cluster::get(endpoint, ColorControl::Id);
 
     /* WS2805 has dedicated warm/cool white channels - expose color temperature.
      * Note: adding/removing this feature changes the cluster shape, so switching
@@ -327,6 +339,19 @@ extern "C" void app_main()
     light_endpoint_id = endpoint::get_id(endpoint);
     ESP_LOGI(TAG, "Color Light (HSV%s) created with endpoint_id %d",
              has_color_temp ? "+CT" : "", light_endpoint_id);
+
+    /* Create the "Color 1-4" lights: the ones switched on make up a multi-color
+     * pattern on the strip. Default colors (off): red, green, blue, white. */
+    static const uint8_t slot_defaults[TLED_PATTERN_MAX_COLORS][2] = {
+        {0, 254}, {85, 254}, {169, 254}, {0, 0},   // hue, saturation (Matter 0-254)
+    };
+    for (int i = 0; i < TLED_PATTERN_MAX_COLORS; i++) {
+        endpoint_t *slot_endpoint = create_hsv_light(node, false, 254, slot_defaults[i][0],
+                                                     slot_defaults[i][1], light_handle);
+        ABORT_APP_ON_FAILURE(slot_endpoint != nullptr, ESP_LOGE(TAG, "Failed to create Color %d endpoint", i + 1));
+        color_slot_endpoint_ids[i] = endpoint::get_id(slot_endpoint);
+        ESP_LOGI(TAG, "Color %d light created with endpoint_id %d", i + 1, color_slot_endpoint_ids[i]);
+    }
 
     /* Create Temperature Sensor endpoint to expose chip temperature */
     temperature_sensor::config_t temp_config;
@@ -363,6 +388,7 @@ extern "C" void app_main()
 
     /* Apply default light settings from Matter attributes */
     app_driver_light_set_defaults(light_endpoint_id);
+    app_driver_color_slots_set_defaults(light_handle);
 
 #if CONFIG_ENABLE_CHIP_SHELL
     esp_matter::console::diagnostics_register_commands();

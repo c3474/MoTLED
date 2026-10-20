@@ -331,6 +331,8 @@ static void print_help(void) {
     serial_write("  pattern <colors>  - Show 1-4 colors, e.g. 'pattern red green' or\r\n");
     serial_write("                      'pattern orange purple blocks' or '... alt 5'\r\n");
     serial_write("                      'pattern off' returns to one color (not saved)\r\n");
+    serial_write("  set pattern_layout <l> - Color 1-4 pattern: alt (repeating bands) or blocks\r\n");
+    serial_write("  set pattern_group <n>  - Pixels per band when alternating (1-255)\r\n");
     serial_write("  save              - Save config and reboot\r\n");
     serial_write("  reboot            - Reboot without saving\r\n");
     serial_write("  factory           - Reset to factory defaults\r\n");
@@ -436,6 +438,8 @@ static void print_config(void) {
         serial_printf("  bin        = %d\r\n", cfg->bin_gpio);
     }
     serial_printf("  white_order = %s\r\n", cfg->white_order == WHITE_ORDER_CW_WW ? "cw_ww" : "ww_cw");
+    serial_printf("  pattern_layout = %s\r\n", cfg->pattern_layout == PATTERN_LAYOUT_BLOCKS ? "blocks" : "alt");
+    serial_printf("  pattern_group = %d\r\n", cfg->pattern_group);
     serial_printf("  name       = %s\r\n", cfg->device_name);
     serial_write("\r\n");
 }
@@ -551,6 +555,26 @@ static void handle_set_command(const char *param, const char *value) {
         } else {
             serial_write("Error: order must be grb, rgb, brg, rbg, bgr, gbr,\r\n");
             serial_write("       or 4 letters with one w for RGBW (e.g. wrgb, grbw)\r\n");
+        }
+    }
+    else if (strcmp(param, "pattern_layout") == 0) {
+        if (strcmp(value, "alt") == 0) {
+            cfg->pattern_layout = PATTERN_LAYOUT_ALTERNATE;
+            serial_write("Set pattern_layout = alt\r\n");
+        } else if (strcmp(value, "blocks") == 0) {
+            cfg->pattern_layout = PATTERN_LAYOUT_BLOCKS;
+            serial_write("Set pattern_layout = blocks\r\n");
+        } else {
+            serial_write("Error: pattern_layout must be alt or blocks\r\n");
+        }
+    }
+    else if (strcmp(param, "pattern_group") == 0) {
+        int n = atoi(value);
+        if (n >= 1 && n <= 255) {
+            cfg->pattern_group = n;
+            serial_printf("Set pattern_group = %d\r\n", n);
+        } else {
+            serial_write("Error: pattern_group must be 1-255 pixels\r\n");
         }
     }
     else if (strcmp(param, "name") == 0) {
