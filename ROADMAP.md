@@ -34,12 +34,14 @@ Priorities come from what permanent-lighting products (Govee, Trimlight,
 JellyFish) and WLED put front and center: repeating multi-color patterns
 first, then motion on top of them. No hard usage statistics were found.
 
-- [ ] **M-5 Color patterns (top priority).** 2-4 colors repeating along the
-      strip in groups of N pixels, e.g. red/green for Christmas, orange/purple
-      for Halloween, red/white/blue for July 4th, plus a static rainbow.
-      *Decide:* how colors are chosen from Apple Home (saved themes, each a
-      Home switch, with colors set on the web page; or "Color 1-4" lights in
-      Home that feed the pattern).
+- [ ] **M-5 Color patterns (top priority).** 2-4 colors along the strip,
+      alternating every N pixels (default 3) or split into equal blocks.
+  - [x] Step 1: pattern engine + serial `pattern` command; tested on the strip.
+  - [ ] Step 2: "Color 1-4" lights in Apple Home. The colors that are switched
+        on make up the pattern; all off returns to the main light's color.
+        Main light keeps power and brightness. Layout and band size become
+        settings on the web page. Home scenes give one-tap themes. Requires
+        one re-pair.
 - [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
   - [x] Step 1: serial `effect` command; all four upstream effects work.
   - [ ] **Chase for patterns:** the color pattern slides along the strip;
