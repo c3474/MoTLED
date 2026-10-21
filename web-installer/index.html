@@ -564,6 +564,27 @@
             letter-spacing: 0.08em;
         }
 
+        /* Checkbox rows inside the config grid (override the field label/input styles) */
+        .config-item .check-label {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-family: inherit;
+            font-size: 0.9rem;
+            text-transform: none;
+            letter-spacing: normal;
+            color: var(--text);
+            cursor: pointer;
+        }
+
+        .config-item .check-label input {
+            width: 1.1rem;
+            height: 1.1rem;
+            padding: 0;
+            flex: none;
+            accent-color: var(--cyan);
+        }
+
         .config-hint {
             font-size: 0.8rem;
             color: var(--text-dim);
@@ -986,6 +1007,17 @@
                         <input type="number" id="maxBrightness" min="1" max="255" value="255">
                     </div>
 
+                    <div class="config-item">
+                        <label class="check-label">
+                            <input type="checkbox" id="colorLights">
+                            <span>Color pattern lights (adds Color 1-4 to your Home app)</span>
+                        </label>
+                    </div>
+                    <p class="config-hint">
+                        Leave unchecked for one simple light. Changing this needs a re-pair: after
+                        Save &amp; Reboot, remove the device in your Home app and add it again.
+                    </p>
+
                     <div class="config-row">
                         <div class="config-item">
                             <label for="patternLayout">Color Pattern Layout</label>
@@ -1349,6 +1381,9 @@
                         case 'pattern_group':
                             document.getElementById('patternGroup').value = value.trim();
                             break;
+                        case 'color_lights':
+                            document.getElementById('colorLights').checked = value.trim() === 'on';
+                            break;
                         case 'type':
                             document.getElementById('ledType').value = value.trim();
                             updateOrderHint();
@@ -1377,6 +1412,7 @@
             const maxBrightness = document.getElementById('maxBrightness').value;
             const patternLayout = document.getElementById('patternLayout').value;
             const patternGroup = document.getElementById('patternGroup').value;
+            const colorLights = document.getElementById('colorLights').checked ? 'on' : 'off';
 
             await sendCommand(`set leds ${numLeds}`);
             await new Promise(r => setTimeout(r, 100));
@@ -1391,6 +1427,8 @@
             await sendCommand(`set pattern_layout ${patternLayout}`);
             await new Promise(r => setTimeout(r, 100));
             await sendCommand(`set pattern_group ${patternGroup}`);
+            await new Promise(r => setTimeout(r, 100));
+            await sendCommand(`set color_lights ${colorLights}`);
             await new Promise(r => setTimeout(r, 100));
             await sendCommand('save');
         });
@@ -1411,6 +1449,7 @@
             const maxBrightness = document.getElementById('maxBrightness').value;
             const patternLayout = document.getElementById('patternLayout').value;
             const patternGroup = document.getElementById('patternGroup').value;
+            const colorLights = document.getElementById('colorLights').checked ? 'on' : 'off';
 
             await sendCommand(`set leds ${numLeds}`);
             await new Promise(r => setTimeout(r, 100));
@@ -1425,6 +1464,8 @@
             await sendCommand(`set pattern_layout ${patternLayout}`);
             await new Promise(r => setTimeout(r, 100));
             await sendCommand(`set pattern_group ${patternGroup}`);
+            await new Promise(r => setTimeout(r, 100));
+            await sendCommand(`set color_lights ${colorLights}`);
             await new Promise(r => setTimeout(r, 100));
             await sendCommand('save');
             await new Promise(r => setTimeout(r, 200));

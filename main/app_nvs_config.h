@@ -78,6 +78,7 @@ typedef struct {
     uint8_t white_pos;          // RGBW white byte position (TLED_WHITE_POS_FIRST..LAST)
     uint8_t pattern_layout;     // Multi-color pattern layout (0 = alternate, 1 = blocks)
     uint8_t pattern_group;      // Pixels per color band when alternating (1-255)
+    uint8_t feature_color_lights; // 1 = show "Color 1-4" lights in Home (changing it needs a re-pair)
     char device_name[32];       // Custom device name
     uint8_t config_version;     // Config version for migration
     bool configured;            // True if config has been set
@@ -136,7 +137,8 @@ typedef struct {
 #define TLED_DEFAULT_WHITE_POS      TLED_WHITE_POS_LAST
 #define TLED_DEFAULT_PATTERN_LAYOUT 0  // Alternate
 #define TLED_DEFAULT_PATTERN_GROUP  3
-#define TLED_CONFIG_VERSION         6  // Bumped for pattern layout (pattern_layout, pattern_group)
+#define TLED_DEFAULT_FEATURE_COLOR_LIGHTS 0  // Simple single light by default
+#define TLED_CONFIG_VERSION         7  // Bumped for optional features (feature_color_lights)
 
 /**
  * @brief Initialize the config module

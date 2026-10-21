@@ -47,6 +47,16 @@ first, then motion on top of them. No hard usage statistics were found.
         pattern colors. Trying first: grouped tile, favorite color swatches,
         and Home scenes per theme. Fallbacks: a third-party HomeKit dashboard
         app, or fewer Color lights.
+- [x] **M-8 Optional features.** One firmware for every strip: checkboxes on
+      the web Configure tab decide which extra controls Apple Home shows.
+      "Color pattern lights" (Color 1-4) is off by default, so a new device
+      is one simple light. Devices upgrading from the first Color 1-4 release
+      keep them. Changing a checkbox needs a re-pair.
+  - [ ] "Effect switches" checkbox, added with M-6.
+- [ ] **M-9 White-only strips.** *Open question:* is the kitchen strip
+      addressable (data wire) or plain 2-wire white? Addressable: add a
+      "white only" option so Home shows just brightness. Plain: needs a new
+      PWM output driver plus a MOSFET on the board.
 - [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
   - [x] Step 1: serial `effect` command; all four upstream effects work.
   - [ ] **Chase for patterns:** the color pattern slides along the strip;
@@ -56,8 +66,9 @@ first, then motion on top of them. No hard usage statistics were found.
         brightness levels with no gamma correction, so it looks stuttery,
         especially when dim. Compute at full 0-255 resolution with a gamma
         curve.
-  - [ ] Expose chosen effects in Apple Home as one on/off switch per effect
-        (requires one re-pair).
+  - [ ] Expose Chase and Twinkle in Apple Home as on/off switches (small
+        tiles, no sliders), behind an "Effect switches" checkbox; rainbow is
+        a pattern rather than its own switch.
   - Lower priority: single-dot chase, candle (possible Halloween use).
 - [ ] **M-7 Firmware updates without USB (OTA).** The partition table already
       has two OTA slots and the Matter OTA requestor is enabled. Upstream

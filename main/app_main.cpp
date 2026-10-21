@@ -340,12 +340,15 @@ extern "C" void app_main()
     ESP_LOGI(TAG, "Color Light (HSV%s) created with endpoint_id %d",
              has_color_temp ? "+CT" : "", light_endpoint_id);
 
-    /* Create the "Color 1-4" lights: the ones switched on make up a multi-color
-     * pattern on the strip. Default colors (off): red, green, blue, white. */
+    /* Optional "Color 1-4" lights: the ones switched on make up a multi-color
+     * pattern on the strip. Default colors (off): red, green, blue, white.
+     * Note: turning this feature on/off changes the device's Matter structure,
+     * so it needs a re-pair in the controller. */
     static const uint8_t slot_defaults[TLED_PATTERN_MAX_COLORS][2] = {
         {0, 254}, {85, 254}, {169, 254}, {0, 0},   // hue, saturation (Matter 0-254)
     };
-    for (int i = 0; i < TLED_PATTERN_MAX_COLORS; i++) {
+    int num_color_slots = config->feature_color_lights ? TLED_PATTERN_MAX_COLORS : 0;
+    for (int i = 0; i < num_color_slots; i++) {
         endpoint_t *slot_endpoint = create_hsv_light(node, false, 254, slot_defaults[i][0],
                                                      slot_defaults[i][1], light_handle);
         ABORT_APP_ON_FAILURE(slot_endpoint != nullptr, ESP_LOGE(TAG, "Failed to create Color %d endpoint", i + 1));

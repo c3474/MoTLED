@@ -331,6 +331,7 @@ static void print_help(void) {
     serial_write("  pattern <colors>  - Show 1-4 colors, e.g. 'pattern red green' or\r\n");
     serial_write("                      'pattern orange purple blocks' or '... alt 5'\r\n");
     serial_write("                      'pattern off' returns to one color (not saved)\r\n");
+    serial_write("  set color_lights <on|off> - Show Color 1-4 lights in Home (needs re-pair)\r\n");
     serial_write("  set pattern_layout <l> - Color 1-4 pattern: alt (repeating bands) or blocks\r\n");
     serial_write("  set pattern_group <n>  - Pixels per band when alternating (1-255)\r\n");
     serial_write("  save              - Save config and reboot\r\n");
@@ -440,6 +441,7 @@ static void print_config(void) {
     serial_printf("  white_order = %s\r\n", cfg->white_order == WHITE_ORDER_CW_WW ? "cw_ww" : "ww_cw");
     serial_printf("  pattern_layout = %s\r\n", cfg->pattern_layout == PATTERN_LAYOUT_BLOCKS ? "blocks" : "alt");
     serial_printf("  pattern_group = %d\r\n", cfg->pattern_group);
+    serial_printf("  color_lights = %s\r\n", cfg->feature_color_lights ? "on" : "off");
     serial_printf("  name       = %s\r\n", cfg->device_name);
     serial_write("\r\n");
 }
@@ -575,6 +577,15 @@ static void handle_set_command(const char *param, const char *value) {
             serial_printf("Set pattern_group = %d\r\n", n);
         } else {
             serial_write("Error: pattern_group must be 1-255 pixels\r\n");
+        }
+    }
+    else if (strcmp(param, "color_lights") == 0) {
+        if (strcmp(value, "on") == 0 || strcmp(value, "off") == 0) {
+            cfg->feature_color_lights = (strcmp(value, "on") == 0) ? 1 : 0;
+            serial_printf("Set color_lights = %s\r\n", value);
+            serial_write("Note: after 'save', remove and re-add the device in your Home app\r\n");
+        } else {
+            serial_write("Error: color_lights must be on or off\r\n");
         }
     }
     else if (strcmp(param, "name") == 0) {
