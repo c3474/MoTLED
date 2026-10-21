@@ -37,11 +37,16 @@ first, then motion on top of them. No hard usage statistics were found.
 - [ ] **M-5 Color patterns (top priority).** 2-4 colors along the strip,
       alternating every N pixels (default 3) or split into equal blocks.
   - [x] Step 1: pattern engine + serial `pattern` command; tested on the strip.
-  - [ ] Step 2: "Color 1-4" lights in Apple Home. The colors that are switched
+  - [x] Step 2: "Color 1-4" lights in Apple Home. The colors that are switched
         on make up the pattern; all off returns to the main light's color.
         Main light keeps power and brightness. Layout and band size become
         settings on the web page. Home scenes give one-tap themes. Requires
         one re-pair.
+  - [ ] Step 3: Home app usability. Apple's light screen always shows a
+        brightness slider plus color picker, which feels clunky for picking
+        pattern colors. Trying first: grouped tile, favorite color swatches,
+        and Home scenes per theme. Fallbacks: a third-party HomeKit dashboard
+        app, or fewer Color lights.
 - [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
   - [x] Step 1: serial `effect` command; all four upstream effects work.
   - [ ] **Chase for patterns:** the color pattern slides along the strip;
