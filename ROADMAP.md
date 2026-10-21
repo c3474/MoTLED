@@ -42,6 +42,9 @@ first, then motion on top of them. No hard usage statistics were found.
         Main light keeps power and brightness. Layout and band size become
         settings on the web page. Home scenes give one-tap themes. Requires
         one re-pair.
+  - [x] Step 3a: one brightness control. Color lights are color on/off only
+        (their sliders are ignored), the main light's brightness dims every
+        mode, and turning on a Color light turns the main light on.
   - [ ] Step 3: Home app usability. Apple's light screen always shows a
         brightness slider plus color picker, which feels clunky for picking
         pattern colors. Trying first: grouped tile, favorite color swatches,

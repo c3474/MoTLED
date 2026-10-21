@@ -52,7 +52,7 @@ extern uint16_t color_slot_endpoint_ids[TLED_PATTERN_MAX_COLORS];
 // One "Color N" light in Apple Home; the slots that are on make up the pattern
 typedef struct {
     bool on;
-    uint8_t level;  // Matter 0-254, balances this color against the others
+    uint8_t level;  // Matter 0-254; ignored, the main light's brightness dims everything
     uint8_t hue;    // Matter 0-254
     uint8_t sat;    // Matter 0-254
 } color_slot_t;
@@ -1137,10 +1137,11 @@ static void apply_color_slots(light_driver_t *driver)
         if (!slot->on) {
             continue;
         }
+        // Full-strength color: Color lights are color on/off only, and the
+        // main light's brightness is the one dimmer for every mode
         uint16_t hue = (slot->hue * STANDARD_HUE_MAX) / MATTER_HUE_MAX;
         uint8_t sat = (slot->sat * STANDARD_SATURATION_MAX) / MATTER_SATURATION_MAX;
-        uint8_t val = (slot->level * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX;
-        hsv_to_rgb(hue, sat, val, &colors[count][0], &colors[count][1], &colors[count][2]);
+        hsv_to_rgb(hue, sat, STANDARD_BRIGHTNESS_MAX, &colors[count][0], &colors[count][1], &colors[count][2]);
         count++;
     }
     uint8_t layout = driver->pattern_layout;
@@ -1156,10 +1157,14 @@ static esp_err_t update_color_slot(light_driver_t *driver, int slot_index, uint3
 {
     color_slot_t *slot = &driver->color_slots[slot_index];
     bool changed = true;
+    bool turn_main_on = false;
 
     xSemaphoreTake(driver->mutex, portMAX_DELAY);
     if (cluster_id == OnOff::Id && attribute_id == OnOff::Attributes::OnOff::Id) {
         slot->on = val->val.b;
+        // The main light is the master switch; turning a color on while the
+        // strip is off should light it rather than appear to do nothing
+        turn_main_on = slot->on && !driver->power;
     } else if (cluster_id == LevelControl::Id && attribute_id == LevelControl::Attributes::CurrentLevel::Id) {
         slot->level = val->val.u8;
     } else if (cluster_id == ColorControl::Id && attribute_id == ColorControl::Attributes::CurrentHue::Id) {
@@ -1175,6 +1180,15 @@ static esp_err_t update_color_slot(light_driver_t *driver, int slot_index, uint3
         ESP_LOGI(TAG, "Color %d: on=%d level=%d hue=%d sat=%d", slot_index + 1,
                  slot->on, slot->level, slot->hue, slot->sat);
         apply_color_slots(driver);
+    }
+    if (turn_main_on) {
+        // Update the main light's attribute (not just the driver) so the Home
+        // app shows it on; scheduled to avoid re-entering the attribute callback
+        uint16_t endpoint_id = light_endpoint_id;
+        chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id]() {
+            esp_matter_attr_val_t on = esp_matter_bool(true);
+            attribute::update(endpoint_id, OnOff::Id, OnOff::Attributes::OnOff::Id, &on);
+        });
     }
     return ESP_OK;
 }
