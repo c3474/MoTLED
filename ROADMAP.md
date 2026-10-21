@@ -53,10 +53,11 @@ first, then motion on top of them. No hard usage statistics were found.
       is one simple light. Devices upgrading from the first Color 1-4 release
       keep them. Changing a checkbox needs a re-pair.
   - [ ] "Effect switches" checkbox, added with M-6.
-- [ ] **M-9 White-only strips.** *Open question:* is the kitchen strip
-      addressable (data wire) or plain 2-wire white? Addressable: add a
-      "white only" option so Home shows just brightness. Plain: needs a new
-      PWM output driver plus a MOSFET on the board.
+- [ ] **M-9 White-only mode for WS2805 (kitchen).** Plan: a WS2805 RGBCCT
+      strip (already supported, with a color temperature slider). Add a
+      "white only" option so Home shows just brightness and color
+      temperature, with no color wheel. Plain warm/cool-only addressable
+      strips (3-channel chips) would need a new strip type; not planned yet.
 - [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
   - [x] Step 1: serial `effect` command; all four upstream effects work.
   - [ ] **Chase for patterns:** the color pattern slides along the strip;
