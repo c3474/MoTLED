@@ -76,7 +76,8 @@ jobs:
 
       - name: Set version in manifest
         run: |
-          VERSION=$(grep 'set(PROJECT_VER ' CMakeLists.txt | grep -o '"[^"]*"' | tr -d '"')
+          # First, unindented set(PROJECT_VER "x.y.z") line (not the CI suffix line)
+          VERSION=$(grep -m1 '^set(PROJECT_VER "' CMakeLists.txt | grep -o '"[^"]*"' | tr -d '"')
           VERSION="${VERSION}-${GITHUB_SHA::7}"
           sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" web-installer/manifest.json
           sed -i "s/>v[0-9][^<]*<\/span>/>v${VERSION}<\/span>/" web-installer/index.html
