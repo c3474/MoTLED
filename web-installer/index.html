@@ -937,6 +937,7 @@
                     <span>Not connected</span>
                 </div>
 
+                <p id="deviceFirmware" class="config-hint"></p>
                 <div class="btn-row">
                     <button id="connectBtn" class="btn btn-primary">Connect</button>
                     <button id="rebootBtn" class="btn" disabled>Reboot</button>
@@ -1028,8 +1029,14 @@
                             <span>Color pattern lights (adds Color 1-4 to your Home app)</span>
                         </label>
                     </div>
+                    <div class="config-item">
+                        <label class="check-label">
+                            <input type="checkbox" id="effectSwitches">
+                            <span>Effect switches (adds Rainbow, Chase and Twinkle to your Home app)</span>
+                        </label>
+                    </div>
                     <p class="config-hint">
-                        Leave unchecked for one simple light. Changing this needs a re-pair: after
+                        Leave both unchecked for one simple light. Changing either needs a re-pair: after
                         Save &amp; Reboot, remove the device in your Home app and add it again.
                     </p>
 
@@ -1155,6 +1162,10 @@
                     color. Each Color light is just on/off plus a color; the main light's brightness dims everything, and
                     turning on a Color light also turns the main light on. Save Home scenes for your themes. Changing this
                     checkbox needs a re-pair.</p>
+                    <p><strong>Effect switches</strong> - Adds Rainbow, Chase and Twinkle on/off switches to your Home
+                    app. They combine and work on whatever is showing: Rainbow fills the strip with a rainbow, Chase makes
+                    the colors march along the strip, Twinkle adds random sparkles. The main light's brightness dims them,
+                    and turning one on also turns the main light on. Changing this checkbox needs a re-pair.</p>
                     <p><strong>Color Pattern Layout / Band Size</strong> - Alternating bands of N pixels (like classic
                     holiday bulbs), or equal blocks (halves, thirds, quarters).</p>
                 </div>
@@ -1178,6 +1189,8 @@
                     <p><strong>set pattern_layout &lt;l&gt;</strong> <span>alt or blocks</span></p>
                     <p><strong>set pattern_group &lt;n&gt;</strong> <span>Band size in pixels (1-255)</span></p>
                     <p><strong>pattern &lt;colors&gt;</strong> <span>Test 1-4 colors, e.g. pattern red green; pattern off (not saved)</span></p>
+                    <p><strong>set effect_switches &lt;on|off&gt;</strong> <span>Rainbow/Chase/Twinkle in Home (needs re-pair)</span></p>
+                    <p><strong>motion &lt;m...&gt;</strong> <span>Test rainbow, chase, twinkle (any mix); motion off (not saved)</span></p>
                     <p><strong>effect &lt;name&gt;</strong> <span>Test rainbow, breathing, candle, chase; effect off (not saved)</span></p>
                     <p><strong>save</strong> <span>Save config to flash and reboot</span></p>
                     <p><strong>reboot</strong> <span>Restart device</span></p>
@@ -1258,6 +1271,7 @@
         let serialBuffer = '';
         let parseConfigBuffer = '';
         let configLoaded = false;        // True once the device's settings filled the form
+        const deviceFirmware = document.getElementById('deviceFirmware');
         let reconnectAfterReboot = false; // Reconnect automatically when the device comes back
 
         // Save only after the form shows the device's real settings, so a failed
@@ -1374,6 +1388,7 @@
             writer = null;
             port = null;
             configLoaded = false;
+            deviceFirmware.textContent = '';
             serialBuffer = '';
             parseConfigBuffer = '';
             updateStatus(false);
@@ -1451,6 +1466,12 @@
                         case 'color_lights':
                             document.getElementById('colorLights').checked = value.trim() === 'on';
                             break;
+                        case 'effect_switches':
+                            document.getElementById('effectSwitches').checked = value.trim() === 'on';
+                            break;
+                        case 'firmware':
+                            deviceFirmware.textContent = `Device firmware: ${value.trim()}`;
+                            break;
                         case 'type':
                             document.getElementById('ledType').value = value.trim();
                             updateOrderHint();
@@ -1499,6 +1520,7 @@
                 `set pattern_layout ${document.getElementById('patternLayout').value}`,
                 `set pattern_group ${document.getElementById('patternGroup').value}`,
                 `set color_lights ${document.getElementById('colorLights').checked ? 'on' : 'off'}`,
+                `set effect_switches ${document.getElementById('effectSwitches').checked ? 'on' : 'off'}`,
             ];
             for (const cmd of commands) {
                 await sendCommand(cmd);

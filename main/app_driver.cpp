@@ -8,6 +8,7 @@
 #include <led_strip.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 #include <nvs_flash.h>
 #include <nvs.h>
 #include <freertos/FreeRTOS.h>
@@ -48,6 +49,12 @@ static const char *TAG = "tled_driver";
 // External reference to light endpoint ID (defined in app_main.cpp)
 extern uint16_t light_endpoint_id;
 extern uint16_t color_slot_endpoint_ids[TLED_PATTERN_MAX_COLORS];
+extern uint16_t effect_switch_endpoint_ids[TLED_NUM_EFFECT_SWITCHES];
+
+// Motion flag for each effect switch, in endpoint order
+static const uint8_t effect_switch_motion[TLED_NUM_EFFECT_SWITCHES] = {
+    TLED_MOTION_RAINBOW, TLED_MOTION_CHASE, TLED_MOTION_TWINKLE,
+};
 
 // One "Color N" light in Apple Home; the slots that are on make up the pattern
 typedef struct {
@@ -116,6 +123,12 @@ typedef struct {
     uint8_t pattern_colors[TLED_PATTERN_MAX_COLORS][3];
     color_slot_t color_slots[TLED_PATTERN_MAX_COLORS];
 
+    // Motion (TLED_MOTION_* flags) layered on top of the colors
+    uint8_t motion;
+    uint32_t chase_offset;      // Pixels the colors have moved
+    TickType_t chase_last_step;
+    uint8_t *twinkle;           // Per-pixel sparkle level (0-255), NULL if unavailable
+
     TaskHandle_t task_handle;
     SemaphoreHandle_t mutex;
 
@@ -164,6 +177,10 @@ static light_driver_t s_light_driver = {
     .pattern_group = TLED_PATTERN_DEFAULT_GROUP,
     .pattern_colors = {{0}},
     .color_slots = {},
+    .motion = 0,
+    .chase_offset = 0,
+    .chase_last_step = 0,
+    .twinkle = NULL,
     .task_handle = NULL,
     .mutex = NULL,
     .num_leds = TLED_DEFAULT_NUM_LEDS,
@@ -458,22 +475,92 @@ static void apply_max_brightness(light_driver_t *driver, uint8_t *r, uint8_t *g,
     }
 }
 
-// Update strip with the multi-color pattern, scaled by brightness (Matter 0-254 scale)
-static esp_err_t update_strip_pattern(light_driver_t *driver, float val)
+#define TLED_CHASE_STEP_MS      120     // Chase speed: one pixel per step
+#define TLED_TWINKLE_SPAWN      2       // Chance per pixel per frame, out of 1000
+#define TLED_TWINKLE_DECAY      245     // Sparkle fade per frame, out of 256
+#define TLED_TWINKLE_BASE       90      // Brightness of non-sparkling pixels, out of 255
+
+// Base color of a pixel (full strength) from the rainbow, the Color 1-4
+// pattern, or the single light color; `pos` is already shifted by any chase
+static void frame_base_color(light_driver_t *driver, uint32_t pos, const uint8_t single[3],
+                             uint8_t rgb[3])
+{
+    uint16_t num_leds = driver->num_leds;
+    if (driver->motion & TLED_MOTION_RAINBOW) {
+        uint16_t hue = (uint16_t)(((pos % num_leds) * STANDARD_HUE_MAX) / num_leds);
+        hsv_to_rgb(hue, STANDARD_SATURATION_MAX, STANDARD_BRIGHTNESS_MAX, &rgb[0], &rgb[1], &rgb[2]);
+    } else if (driver->pattern_count > 0) {
+        uint32_t p = (driver->pattern_layout == PATTERN_LAYOUT_BLOCKS) ? pos % num_leds : pos;
+        uint8_t idx = tled_pattern_color_index((uint16_t)(p % 65536), num_leds, driver->pattern_count,
+                                               driver->pattern_layout, driver->pattern_group);
+        memcpy(rgb, driver->pattern_colors[idx], 3);
+    } else if (driver->motion & TLED_MOTION_CHASE) {
+        // A single color can't visibly move, so chase it as color/gap bands
+        bool lit = ((pos / driver->pattern_group) % 2) == 0;
+        rgb[0] = lit ? single[0] : 0;
+        rgb[1] = lit ? single[1] : 0;
+        rgb[2] = lit ? single[2] : 0;
+    } else {
+        memcpy(rgb, single, 3);
+    }
+}
+
+// How far the colors repeat along the strip, so chasing never shows a seam
+static uint32_t frame_period(light_driver_t *driver)
+{
+    if (!(driver->motion & TLED_MOTION_RAINBOW) && driver->pattern_layout == PATTERN_LAYOUT_ALTERNATE) {
+        uint8_t bands = driver->pattern_count > 0 ? driver->pattern_count : 2;
+        return (uint32_t)driver->pattern_group * bands;
+    }
+    return driver->num_leds;
+}
+
+// Update the strip with the current colors (single color, Color 1-4 pattern
+// or rainbow) and motion, scaled by brightness (Matter 0-254 scale)
+static esp_err_t update_strip_frame(light_driver_t *driver, float val)
 {
     if (driver->strip == NULL && driver->ws2805 == NULL) {
         return ESP_ERR_INVALID_STATE;
     }
 
+    // Advance the chase on its own clock, independent of the frame rate
+    TickType_t now = xTaskGetTickCount();
+    if ((driver->motion & TLED_MOTION_CHASE) &&
+        (uint32_t)(now - driver->chase_last_step) * portTICK_PERIOD_MS >= TLED_CHASE_STEP_MS) {
+        driver->chase_offset++;
+        driver->chase_last_step = now;
+    }
+    bool twinkle = (driver->motion & TLED_MOTION_TWINKLE) && driver->twinkle != NULL;
+
+    // The single light color at full strength (used when there's no pattern)
+    uint8_t single[3];
+    hsv_to_rgb((uint16_t)((driver->transition.current_hue * STANDARD_HUE_MAX) / MATTER_HUE_MAX),
+               (uint8_t)((driver->transition.current_sat * STANDARD_SATURATION_MAX) / MATTER_SATURATION_MAX),
+               STANDARD_BRIGHTNESS_MAX, &single[0], &single[1], &single[2]);
+
+    // Brightness level, rounded so the lowest Home level (1) still lights
+    uint16_t level = (uint16_t)(val + 0.5f);
+    uint32_t period = frame_period(driver);
+    uint32_t shift = (driver->motion & TLED_MOTION_CHASE) ? driver->chase_offset % period : 0;
+
     for (int i = 0; i < driver->num_leds; i++) {
-        uint8_t idx = tled_pattern_color_index(i, driver->num_leds, driver->pattern_count,
-                                               driver->pattern_layout, driver->pattern_group);
-        const uint8_t *color = driver->pattern_colors[idx];
-        // Brightness level, rounded so the lowest Home level (1) still lights
-        uint16_t level = (uint16_t)(val + 0.5f);
-        uint8_t r = scale_keep_lit(color[0], level, MATTER_BRIGHTNESS_MAX);
-        uint8_t g = scale_keep_lit(color[1], level, MATTER_BRIGHTNESS_MAX);
-        uint8_t b = scale_keep_lit(color[2], level, MATTER_BRIGHTNESS_MAX);
+        uint8_t rgb[3];
+        // Subtracting the shift moves the colors toward the end of the strip
+        frame_base_color(driver, (uint32_t)i + period - shift, single, rgb);
+
+        uint16_t sparkle = 255;
+        if (twinkle) {
+            uint8_t *t = &driver->twinkle[i];
+            *t = (uint8_t)(((uint16_t)*t * TLED_TWINKLE_DECAY) >> 8);
+            if (esp_random() % 1000 < TLED_TWINKLE_SPAWN) {
+                *t = 255;
+            }
+            sparkle = TLED_TWINKLE_BASE + ((uint16_t)*t * (255 - TLED_TWINKLE_BASE)) / 255;
+        }
+
+        uint8_t r = scale_keep_lit(scale_keep_lit(rgb[0], sparkle, 255), level, MATTER_BRIGHTNESS_MAX);
+        uint8_t g = scale_keep_lit(scale_keep_lit(rgb[1], sparkle, 255), level, MATTER_BRIGHTNESS_MAX);
+        uint8_t b = scale_keep_lit(scale_keep_lit(rgb[2], sparkle, 255), level, MATTER_BRIGHTNESS_MAX);
         apply_max_brightness(driver, &r, &g, &b);
         driver_set_pixel(driver, i, r, g, b, 0, 0);
     }
@@ -770,10 +857,15 @@ static void transition_task(void *arg)
                 );
             }
 
-            // Update strip with interpolated values (the pattern, if one is set,
-            // replaces the single color but still follows power and brightness)
-            if (driver->pattern_count > 0 && driver->color_mode != COLOR_MODE_CT) {
-                update_strip_pattern(driver, driver->transition.current_val);
+        }
+
+        // Redraw while a transition runs, and on every frame while motion
+        // runs. A pattern, rainbow or motion replaces the plain single-color
+        // output but still follows power and brightness.
+        bool animated = driver->motion != 0 && driver->color_mode != COLOR_MODE_CT;
+        if (driver->transition.transitioning || animated) {
+            if ((driver->pattern_count > 0 || animated) && driver->color_mode != COLOR_MODE_CT) {
+                update_strip_frame(driver, driver->transition.current_val);
             } else {
                 uint8_t r, g, b, ww, cw;
                 get_interpolated_channels(driver, &r, &g, &b, &ww, &cw);
@@ -1105,6 +1197,35 @@ esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
     return ESP_OK;
 }
 
+esp_err_t app_driver_light_set_motion(app_driver_handle_t handle, uint8_t motion)
+{
+    light_driver_t *driver = (light_driver_t *)handle;
+    if (driver == NULL || (motion & ~TLED_MOTION_ALL) != 0) {
+        return ESP_ERR_INVALID_ARG;
+    }
+
+    xSemaphoreTake(driver->mutex, portMAX_DELAY);
+    driver->motion = motion;
+    if (driver->twinkle != NULL && !(motion & TLED_MOTION_TWINKLE)) {
+        memset(driver->twinkle, 0, driver->num_leds);
+    }
+    uint8_t hue = driver->hue;
+    uint8_t sat = driver->saturation;
+    uint8_t bri = driver->brightness;
+    ESP_LOGI(TAG, "Motion set: 0x%02x", motion);
+    xSemaphoreGive(driver->mutex);
+
+    // Redraw (and stop any serial test effect); motion keeps drawing after this
+    start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
+    return ESP_OK;
+}
+
+uint8_t app_driver_light_get_motion(app_driver_handle_t handle)
+{
+    light_driver_t *driver = (light_driver_t *)handle;
+    return driver != NULL ? driver->motion : 0;
+}
+
 uint8_t app_driver_light_get_effect(app_driver_handle_t handle)
 {
     light_driver_t *driver = (light_driver_t *)handle;
@@ -1167,6 +1288,45 @@ static void apply_color_slots(light_driver_t *driver)
     app_driver_light_set_pattern((app_driver_handle_t)driver, colors, count, layout, group);
 }
 
+// Turn the main light on from a Color light or effect switch, updating its
+// attribute (not just the driver) so the Home app shows it; scheduled to avoid
+// re-entering the attribute callback
+static void schedule_main_light_on(void)
+{
+    uint16_t endpoint_id = light_endpoint_id;
+    chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id]() {
+        esp_matter_attr_val_t on = esp_matter_bool(true);
+        attribute::update(endpoint_id, OnOff::Id, OnOff::Attributes::OnOff::Id, &on);
+    });
+}
+
+// Handle an on/off change on one of the effect switches (Rainbow, Chase, Twinkle)
+static esp_err_t update_effect_switch(light_driver_t *driver, int index, uint32_t cluster_id,
+                                      uint32_t attribute_id, esp_matter_attr_val_t *val)
+{
+    if (cluster_id != OnOff::Id || attribute_id != OnOff::Attributes::OnOff::Id) {
+        return ESP_OK;
+    }
+
+    xSemaphoreTake(driver->mutex, portMAX_DELAY);
+    uint8_t motion = driver->motion;
+    bool power = driver->power;
+    xSemaphoreGive(driver->mutex);
+
+    if (val->val.b) {
+        motion |= effect_switch_motion[index];
+    } else {
+        motion &= ~effect_switch_motion[index];
+    }
+    ESP_LOGI(TAG, "Effect switch %d: %s", index + 1, val->val.b ? "on" : "off");
+    app_driver_light_set_motion((app_driver_handle_t)driver, motion);
+
+    if (val->val.b && !power) {
+        schedule_main_light_on();
+    }
+    return ESP_OK;
+}
+
 // Handle an attribute change on one of the "Color N" lights
 static esp_err_t update_color_slot(light_driver_t *driver, int slot_index, uint32_t cluster_id,
                                    uint32_t attribute_id, esp_matter_attr_val_t *val)
@@ -1198,13 +1358,7 @@ static esp_err_t update_color_slot(light_driver_t *driver, int slot_index, uint3
         apply_color_slots(driver);
     }
     if (turn_main_on) {
-        // Update the main light's attribute (not just the driver) so the Home
-        // app shows it on; scheduled to avoid re-entering the attribute callback
-        uint16_t endpoint_id = light_endpoint_id;
-        chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id]() {
-            esp_matter_attr_val_t on = esp_matter_bool(true);
-            attribute::update(endpoint_id, OnOff::Id, OnOff::Attributes::OnOff::Id, &on);
-        });
+        schedule_main_light_on();
     }
     return ESP_OK;
 }
@@ -1226,6 +1380,11 @@ esp_err_t app_driver_attribute_update(app_driver_handle_t driver_handle,
     for (int slot = 0; slot < TLED_PATTERN_MAX_COLORS; slot++) {
         if (color_slot_endpoint_ids[slot] != 0 && endpoint_id == color_slot_endpoint_ids[slot]) {
             return update_color_slot(driver, slot, cluster_id, attribute_id, val);
+        }
+    }
+    for (int i = 0; i < TLED_NUM_EFFECT_SWITCHES; i++) {
+        if (effect_switch_endpoint_ids[i] != 0 && endpoint_id == effect_switch_endpoint_ids[i]) {
+            return update_effect_switch(driver, i, cluster_id, attribute_id, val);
         }
     }
 
@@ -1324,6 +1483,28 @@ esp_err_t app_driver_color_slots_set_defaults(app_driver_handle_t handle)
 
     apply_color_slots(driver);
     return ESP_OK;
+}
+
+esp_err_t app_driver_effect_switches_set_defaults(app_driver_handle_t handle)
+{
+    light_driver_t *driver = (light_driver_t *)handle;
+    if (driver == NULL || driver->mutex == NULL) {
+        return ESP_ERR_INVALID_STATE;
+    }
+
+    // Matter keeps the switches' on/off state across reboots
+    uint8_t motion = 0;
+    for (int i = 0; i < TLED_NUM_EFFECT_SWITCHES; i++) {
+        uint16_t ep = effect_switch_endpoint_ids[i];
+        esp_matter_attr_val_t val;
+        if (ep != 0 &&
+            attribute::get_val(attribute::get(ep, OnOff::Id, OnOff::Attributes::OnOff::Id), &val) == ESP_OK &&
+            val.val.b) {
+            motion |= effect_switch_motion[i];
+        }
+    }
+    ESP_LOGI(TAG, "Restored effect switches: motion 0x%02x", motion);
+    return app_driver_light_set_motion(handle, motion);
 }
 
 esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id)
@@ -1458,6 +1639,10 @@ app_driver_handle_t app_driver_light_init(void)
     // Load config values
     const tled_config_t *config = tled_config_get();
     s_light_driver.num_leds = config->num_leds;
+    s_light_driver.twinkle = (uint8_t *)calloc(config->num_leds, 1);
+    if (s_light_driver.twinkle == NULL) {
+        ESP_LOGW(TAG, "No memory for twinkle state; twinkle disabled");
+    }
     s_light_driver.gpio_pin = config->gpio_pin;
     s_light_driver.max_brightness = config->max_brightness;
     s_light_driver.rgb_order = config->rgb_order;

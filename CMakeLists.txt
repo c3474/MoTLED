@@ -14,6 +14,10 @@ if(NOT DEFINED ENV{ESP_MATTER_DEVICE_PATH})
 endif(NOT DEFINED ENV{ESP_MATTER_DEVICE_PATH})
 
 set(PROJECT_VER "0.7.1")
+# CI appends the commit (e.g. 0.7.1-591a412) so a device can report its exact build
+if(DEFINED ENV{MOTLED_BUILD_ID})
+    set(PROJECT_VER "${PROJECT_VER}-$ENV{MOTLED_BUILD_ID}")
+endif()
 set(PROJECT_VER_NUMBER 10)
 
 set(ESP_MATTER_PATH $ENV{ESP_MATTER_PATH})

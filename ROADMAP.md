@@ -55,7 +55,7 @@ first, then motion on top of them. No hard usage statistics were found.
       "Color pattern lights" (Color 1-4) is off by default, so a new device
       is one simple light. Devices upgrading from the first Color 1-4 release
       keep them. Changing a checkbox needs a re-pair.
-  - [ ] "Effect switches" checkbox, added with M-6.
+  - [x] "Effect switches" checkbox (Rainbow, Chase, Twinkle), off by default.
 - [ ] **M-9 White-only mode for WS2805 (kitchen).** Plan: a WS2805 RGBCCT
       strip (already supported, with a color temperature slider). Add a
       "white only" option so Home shows just brightness and color
@@ -63,14 +63,16 @@ first, then motion on top of them. No hard usage statistics were found.
       strips (3-channel chips) would need a new strip type; not planned yet.
 - [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
   - [x] Step 1: serial `effect` command; all four upstream effects work.
-  - [ ] **Chase for patterns:** the color pattern slides along the strip;
+  - [x] **Rainbow:** full rainbow along the strip; with Chase it becomes a
+        rainbow chase.
+  - [x] **Chase for patterns:** the color pattern slides along the strip;
         covers "rainbow chase" and moving holiday patterns.
-  - [ ] **Twinkle:** random LEDs sparkle over the pattern or a base color.
+  - [x] **Twinkle:** random LEDs sparkle over the pattern or a base color.
   - [ ] **Smooth breathing/fades:** breathing steps through only ~100
         brightness levels with no gamma correction, so it looks stuttery,
         especially when dim. Compute at full 0-255 resolution with a gamma
         curve.
-  - [ ] Expose Chase and Twinkle in Apple Home as on/off switches (small
+  - [x] Expose Rainbow, Chase and Twinkle in Apple Home as on/off switches (small
         tiles, no sliders), behind an "Effect switches" checkbox; rainbow is
         a pattern rather than its own switch.
   - Lower priority: single-dot chase, candle (possible Halloween use).
@@ -97,6 +99,8 @@ first, then motion on top of them. No hard usage statistics were found.
       never matched lines ending in \r\n), Save stays disabled until the
       device's settings are loaded, added device name and power-on fields,
       and the page reconnects after a reboot.
+- [x] **H-5 Firmware version on the device.** CI stamps the commit into the
+      build (e.g. 0.7.1-591a412); `config` and the Configure tab show it.
 - [ ] **H-3 Rebrand and restyle the web installer.** Give it its own look
       (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
       Change its title and links to MoTLED and credit upstream TLED.

@@ -45,6 +45,7 @@ static const char *TAG = "tled_main";
 uint16_t light_endpoint_id = 0;
 uint16_t temp_sensor_endpoint_id = 0;
 uint16_t color_slot_endpoint_ids[TLED_PATTERN_MAX_COLORS] = {0};  // "Color 1-4" lights
+uint16_t effect_switch_endpoint_ids[TLED_NUM_EFFECT_SWITCHES] = {0};  // Rainbow, Chase, Twinkle
 
 using namespace esp_matter;
 using namespace esp_matter::attribute;
@@ -356,6 +357,22 @@ extern "C" void app_main()
         ESP_LOGI(TAG, "Color %d light created with endpoint_id %d", i + 1, color_slot_endpoint_ids[i]);
     }
 
+    /* Optional effect switches (Rainbow, Chase, Twinkle): plain on/off lights in
+     * Home, no sliders. They layer motion on whatever colors are showing. Like the
+     * Color lights, turning this feature on/off needs a re-pair. */
+    if (config->feature_effect_switches) {
+        static const char *effect_names[TLED_NUM_EFFECT_SWITCHES] = {"Rainbow", "Chase", "Twinkle"};
+        for (int i = 0; i < TLED_NUM_EFFECT_SWITCHES; i++) {
+            on_off_light::config_t switch_config;
+            switch_config.on_off.on_off = false;
+            switch_config.on_off_lighting.start_up_on_off = nullptr;
+            endpoint_t *switch_endpoint = on_off_light::create(node, &switch_config, ENDPOINT_FLAG_NONE, light_handle);
+            ABORT_APP_ON_FAILURE(switch_endpoint != nullptr, ESP_LOGE(TAG, "Failed to create %s switch", effect_names[i]));
+            effect_switch_endpoint_ids[i] = endpoint::get_id(switch_endpoint);
+            ESP_LOGI(TAG, "%s switch created with endpoint_id %d", effect_names[i], effect_switch_endpoint_ids[i]);
+        }
+    }
+
     /* Create Temperature Sensor endpoint to expose chip temperature */
     temperature_sensor::config_t temp_config;
     // ESP32-C6 internal sensor range: -10°C to 80°C (in 0.01°C units)
@@ -392,6 +409,7 @@ extern "C" void app_main()
     /* Apply default light settings from Matter attributes */
     app_driver_light_set_defaults(light_endpoint_id);
     app_driver_color_slots_set_defaults(light_handle);
+    app_driver_effect_switches_set_defaults(light_handle);
 
 #if CONFIG_ENABLE_CHIP_SHELL
     esp_matter::console::diagnostics_register_commands();

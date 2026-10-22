@@ -120,6 +120,13 @@ typedef enum {
     PATTERN_LAYOUT_BLOCKS = 1,      // Strip split into equal blocks: halves, thirds, quarters
 } tled_pattern_layout_t;
 
+// Motion layered on top of the light's colors (bit flags, combinable)
+#define TLED_MOTION_RAINBOW     0x01    // Full rainbow along the strip (replaces the colors)
+#define TLED_MOTION_CHASE       0x02    // Colors march along the strip
+#define TLED_MOTION_TWINKLE     0x04    // Random pixels sparkle brighter and fade
+#define TLED_MOTION_ALL         (TLED_MOTION_RAINBOW | TLED_MOTION_CHASE | TLED_MOTION_TWINKLE)
+#define TLED_NUM_EFFECT_SWITCHES 3      // Rainbow, Chase, Twinkle switches in Home
+
 /**
  * @brief Which pattern color (0..count-1) a pixel shows.
  *
@@ -343,6 +350,30 @@ esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
  * @return ESP_OK on success
  */
 esp_err_t app_driver_color_slots_set_defaults(app_driver_handle_t handle);
+
+/**
+ * @brief Set the motion layered on top of the light's colors
+ *
+ * Follows the light's power and brightness, and works with the single
+ * color, Color 1-4 patterns and rainbow.
+ *
+ * @param handle Driver handle
+ * @param motion TLED_MOTION_* flags (0 = still)
+ * @return ESP_OK on success
+ */
+esp_err_t app_driver_light_set_motion(app_driver_handle_t handle, uint8_t motion);
+
+/**
+ * @brief Get the current TLED_MOTION_* flags
+ */
+uint8_t app_driver_light_get_motion(app_driver_handle_t handle);
+
+/**
+ * @brief Load the effect switches' saved state and start their motion
+ *
+ * Call after Matter has started, alongside app_driver_light_set_defaults().
+ */
+esp_err_t app_driver_effect_switches_set_defaults(app_driver_handle_t handle);
 
 #ifdef __cplusplus
 }

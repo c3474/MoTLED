@@ -16,6 +16,7 @@
 #include "driver/usb_serial_jtag.h"
 #include "esp_log.h"
 #include "esp_system.h"
+#include "esp_app_desc.h"
 #include <esp_matter.h>
 
 static const char *TAG = "serial_config";
@@ -39,6 +40,7 @@ static void print_config(void);
 static void handle_set_command(const char *param, const char *value);
 static void handle_effect_command(const char *name);
 static void handle_pattern_command(const char *args);
+static void handle_motion_command(const char *args);
 static const char *white_mode_to_str(uint8_t mode);
 
 static void serial_write(const char *str) {
@@ -119,9 +121,13 @@ static void process_command(const char *cmd) {
         return;
     }
 
-    // 'pattern' takes more arguments than the generic parser below handles
+    // 'pattern' and 'motion' take more arguments than the generic parser below handles
     if (strncmp(cmd, "pattern", 7) == 0 && (cmd[7] == '\0' || cmd[7] == ' ')) {
         handle_pattern_command(cmd + 7);
+        return;
+    }
+    if (strncmp(cmd, "motion", 6) == 0 && (cmd[6] == '\0' || cmd[6] == ' ')) {
+        handle_motion_command(cmd + 6);
         return;
     }
 
@@ -305,6 +311,47 @@ static void handle_pattern_command(const char *args) {
     }
 }
 
+// Set the motion layered on the colors (testing aid; not saved):
+//   motion [rainbow] [chase] [twinkle]   or   motion off
+static void handle_motion_command(const char *args) {
+    if (s_light_handle == NULL) {
+        serial_write("Error: LED driver not available\r\n");
+        return;
+    }
+
+    char buf[CMD_BUF_SIZE];
+    strncpy(buf, args, sizeof(buf) - 1);
+    buf[sizeof(buf) - 1] = '\0';
+
+    char *save = NULL;
+    char *tok = strtok_r(buf, " ", &save);
+    if (tok == NULL) {
+        uint8_t m = app_driver_light_get_motion(s_light_handle);
+        serial_printf("motion =%s%s%s%s\r\n",
+                      (m & TLED_MOTION_RAINBOW) ? " rainbow" : "",
+                      (m & TLED_MOTION_CHASE) ? " chase" : "",
+                      (m & TLED_MOTION_TWINKLE) ? " twinkle" : "",
+                      m == 0 ? " off" : "");
+        return;
+    }
+
+    uint8_t motion = 0;
+    for (; tok != NULL; tok = strtok_r(NULL, " ", &save)) {
+        if (strcmp(tok, "rainbow") == 0) {
+            motion |= TLED_MOTION_RAINBOW;
+        } else if (strcmp(tok, "chase") == 0) {
+            motion |= TLED_MOTION_CHASE;
+        } else if (strcmp(tok, "twinkle") == 0) {
+            motion |= TLED_MOTION_TWINKLE;
+        } else if (strcmp(tok, "off") != 0) {
+            serial_write("Error: motion takes rainbow, chase, twinkle (any mix) or off\r\n");
+            return;
+        }
+    }
+    app_driver_light_set_motion(s_light_handle, motion);
+    serial_write(motion == 0 ? "Motion off\r\n" : "Motion set\r\n");
+}
+
 static void print_help(void) {
     serial_write("\r\n");
     serial_write("Available commands:\r\n");
@@ -332,8 +379,11 @@ static void print_help(void) {
     serial_write("                      'pattern orange purple blocks' or '... alt 5'\r\n");
     serial_write("                      'pattern off' returns to one color (not saved)\r\n");
     serial_write("  set color_lights <on|off> - Show Color 1-4 lights in Home (needs re-pair)\r\n");
+    serial_write("  set effect_switches <on|off> - Show Rainbow/Chase/Twinkle in Home (needs re-pair)\r\n");
     serial_write("  set pattern_layout <l> - Color 1-4 pattern: alt (repeating bands) or blocks\r\n");
     serial_write("  set pattern_group <n>  - Pixels per band when alternating (1-255)\r\n");
+    serial_write("  motion <m...>     - Rainbow, chase and/or twinkle on the current colors,\r\n");
+    serial_write("                      e.g. 'motion chase twinkle'; 'motion off' (not saved)\r\n");
     serial_write("  save              - Save config and reboot\r\n");
     serial_write("  reboot            - Reboot without saving\r\n");
     serial_write("  factory           - Reset to factory defaults\r\n");
@@ -421,6 +471,7 @@ static void print_config(void) {
     }
 
     serial_write("\r\nCurrent configuration:\r\n");
+    serial_printf("  firmware   = %s\r\n", esp_app_get_description()->version);
     serial_printf("  leds       = %d\r\n", cfg->num_leds);
     serial_printf("  gpio       = %d\r\n", cfg->gpio_pin);
     serial_printf("  brightness = %d\r\n", cfg->max_brightness);
@@ -442,6 +493,7 @@ static void print_config(void) {
     serial_printf("  pattern_layout = %s\r\n", cfg->pattern_layout == PATTERN_LAYOUT_BLOCKS ? "blocks" : "alt");
     serial_printf("  pattern_group = %d\r\n", cfg->pattern_group);
     serial_printf("  color_lights = %s\r\n", cfg->feature_color_lights ? "on" : "off");
+    serial_printf("  effect_switches = %s\r\n", cfg->feature_effect_switches ? "on" : "off");
     serial_printf("  name       = %s\r\n", cfg->device_name);
     serial_write("\r\n");
 }
@@ -586,6 +638,15 @@ static void handle_set_command(const char *param, const char *value) {
             serial_write("Note: after 'save', remove and re-add the device in your Home app\r\n");
         } else {
             serial_write("Error: color_lights must be on or off\r\n");
+        }
+    }
+    else if (strcmp(param, "effect_switches") == 0) {
+        if (strcmp(value, "on") == 0 || strcmp(value, "off") == 0) {
+            cfg->feature_effect_switches = (strcmp(value, "on") == 0) ? 1 : 0;
+            serial_printf("Set effect_switches = %s\r\n", value);
+            serial_write("Note: after 'save', remove and re-add the device in your Home app\r\n");
+        } else {
+            serial_write("Error: effect_switches must be on or off\r\n");
         }
     }
     else if (strcmp(param, "name") == 0) {

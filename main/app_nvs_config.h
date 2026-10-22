@@ -79,6 +79,8 @@ typedef struct {
     uint8_t pattern_layout;     // Multi-color pattern layout (0 = alternate, 1 = blocks)
     uint8_t pattern_group;      // Pixels per color band when alternating (1-255)
     uint8_t feature_color_lights; // 1 = show "Color 1-4" lights in Home (changing it needs a re-pair)
+    uint8_t feature_effect_switches; // 1 = show Rainbow/Chase/Twinkle switches in Home (needs a re-pair)
+    uint8_t reserved;           // Spare; keeps this layout's size distinct from v7's
     char device_name[32];       // Custom device name
     uint8_t config_version;     // Config version for migration
     bool configured;            // True if config has been set
@@ -138,7 +140,8 @@ typedef struct {
 #define TLED_DEFAULT_PATTERN_LAYOUT 0  // Alternate
 #define TLED_DEFAULT_PATTERN_GROUP  3
 #define TLED_DEFAULT_FEATURE_COLOR_LIGHTS 0  // Simple single light by default
-#define TLED_CONFIG_VERSION         7  // Bumped for optional features (feature_color_lights)
+#define TLED_DEFAULT_FEATURE_EFFECT_SWITCHES 0
+#define TLED_CONFIG_VERSION         8  // Bumped for effect switches (feature_effect_switches)
 
 /**
  * @brief Initialize the config module

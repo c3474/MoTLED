@@ -31,6 +31,7 @@ jobs:
           git config --global --add safe.directory '*'
           . "$IDF_PATH/export.sh"
           . "$ESP_MATTER_PATH/export.sh"
+          export MOTLED_BUILD_ID="${GITHUB_SHA::7}"
           idf.py build
 
       - name: Collect web installer binaries
