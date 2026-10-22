@@ -439,14 +439,22 @@ static esp_err_t update_strip_rgb(light_driver_t *driver, uint8_t r, uint8_t g, 
     return update_strip_channels(driver, r, g, b, 0, 0);
 }
 
+// Scale a channel by num/den, but never round a lit channel down to off:
+// at the lowest brightness levels plain integer scaling turns the strip dark
+static uint8_t scale_keep_lit(uint8_t value, uint16_t num, uint16_t den)
+{
+    uint8_t scaled = (uint8_t)(((uint32_t)value * num) / den);
+    return (scaled == 0 && value > 0 && num > 0) ? 1 : scaled;
+}
+
 // Apply max_brightness clamping to RGB values
 static void apply_max_brightness(light_driver_t *driver, uint8_t *r, uint8_t *g, uint8_t *b)
 {
     if (driver->max_brightness < 255) {
         // Scale RGB values by max_brightness/255
-        *r = (uint8_t)(((uint16_t)*r * driver->max_brightness) / 255);
-        *g = (uint8_t)(((uint16_t)*g * driver->max_brightness) / 255);
-        *b = (uint8_t)(((uint16_t)*b * driver->max_brightness) / 255);
+        *r = scale_keep_lit(*r, driver->max_brightness, 255);
+        *g = scale_keep_lit(*g, driver->max_brightness, 255);
+        *b = scale_keep_lit(*b, driver->max_brightness, 255);
     }
 }
 
@@ -461,9 +469,11 @@ static esp_err_t update_strip_pattern(light_driver_t *driver, float val)
         uint8_t idx = tled_pattern_color_index(i, driver->num_leds, driver->pattern_count,
                                                driver->pattern_layout, driver->pattern_group);
         const uint8_t *color = driver->pattern_colors[idx];
-        uint8_t r = (uint8_t)(color[0] * val / MATTER_BRIGHTNESS_MAX);
-        uint8_t g = (uint8_t)(color[1] * val / MATTER_BRIGHTNESS_MAX);
-        uint8_t b = (uint8_t)(color[2] * val / MATTER_BRIGHTNESS_MAX);
+        // Brightness level, rounded so the lowest Home level (1) still lights
+        uint16_t level = (uint16_t)(val + 0.5f);
+        uint8_t r = scale_keep_lit(color[0], level, MATTER_BRIGHTNESS_MAX);
+        uint8_t g = scale_keep_lit(color[1], level, MATTER_BRIGHTNESS_MAX);
+        uint8_t b = scale_keep_lit(color[2], level, MATTER_BRIGHTNESS_MAX);
         apply_max_brightness(driver, &r, &g, &b);
         driver_set_pixel(driver, i, r, g, b, 0, 0);
     }
@@ -511,6 +521,12 @@ static void get_interpolated_channels(light_driver_t *driver, uint8_t *r, uint8_
     uint8_t sat = (uint8_t)((driver->transition.current_sat * STANDARD_SATURATION_MAX) / MATTER_SATURATION_MAX);
     uint8_t val = (uint8_t)((driver->transition.current_val * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX);
     uint16_t ct = (uint16_t)driver->transition.current_ct;
+
+    // Matter levels 1-2 round down to 0% here; keep the light at its dimmest
+    // step instead of off (a fade to off still ends at exactly 0)
+    if (val == 0 && driver->transition.current_val >= 0.5f) {
+        val = 1;
+    }
 
     compute_output_channels(driver, hue, sat, val, ct, r, g, b, ww, cw);
 }

@@ -22,7 +22,7 @@ once it is merged and tested on the strip.
 - [x] **M-3 Bench test.** Flash from the web installer without erasing, so the
       Apple Home pairing survives. Check red, green, blue and white, dimming,
       and all 100 pixels lighting evenly.
-- [ ] **M-3b Low-end dimming.** At 1% in Apple Home the strip looks off;
+- [x] **M-3b Low-end dimming.** At 1% in Apple Home the strip looks off;
       2% is a nice dim glow. Likely the brightness scaling rounds the lowest
       levels to 0. Make sure "on" always lights at least the dimmest step.
 - [ ] **M-4 Offer upstream.** Open a PR or issue on `maui1911/TLED` with the
@@ -93,6 +93,10 @@ first, then motion on top of them. No hard usage statistics were found.
       <https://c3474.github.io/MoTLED/>. No local toolchain and no committed
       binaries. Flash from Chrome or Edge and leave "Erase device" unticked to
       keep the Apple Home pairing.
+- [x] **H-4 Configure tab reads the device.** Fixed upstream's parser (it
+      never matched lines ending in \r\n), Save stays disabled until the
+      device's settings are loaded, added device name and power-on fields,
+      and the page reconnects after a reboot.
 - [ ] **H-3 Rebrand and restyle the web installer.** Give it its own look
       (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
       Change its title and links to MoTLED and credit upstream TLED.

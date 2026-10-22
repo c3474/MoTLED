@@ -897,7 +897,7 @@
                     <h3>Flash Firmware to ESP32-C6</h3>
                     <p>Connect your board via USB and click below. Works directly in Chrome or Edge - no software install needed.</p>
                     <esp-web-install-button manifest="manifest.json">
-                        <button slot="activate">Install MoTLED</button>
+                        <button slot="activate" class="btn btn-primary">Install MoTLED</button>
                         <span slot="unsupported">Web Serial not supported. Use Chrome or Edge on desktop.</span>
                         <span slot="not-allowed">Serial access blocked. Ensure you're using HTTPS.</span>
                     </esp-web-install-button>
@@ -1005,6 +1005,21 @@
                     <div class="config-item">
                         <label for="maxBrightness">Max Brightness (1-255)</label>
                         <input type="number" id="maxBrightness" min="1" max="255" value="255">
+                    </div>
+
+                    <div class="config-row">
+                        <div class="config-item">
+                            <label for="deviceName">Device Name (one word)</label>
+                            <input type="text" id="deviceName" maxlength="31" value="TLED">
+                        </div>
+                        <div class="config-item">
+                            <label for="powerOn">After a Power Cut</label>
+                            <select id="powerOn">
+                                <option value="restore">Restore last state</option>
+                                <option value="on">Always turn on</option>
+                                <option value="off">Always stay off</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="config-item">
@@ -1133,6 +1148,15 @@
                     </ul>
                     <p><strong>Finding an RGBW order</strong> - Start with <code>GRB</code>, then set red, green, blue and white in your Home app and note which color each one shows. Whatever lights up for green is the strip's 1st byte, red its 2nd, blue its 3rd, and white its 4th. For example, if green shows white, red shows red, blue shows green and white shows blue, the order is <code>WRGB</code>.</p>
                     <p><strong>Max Brightness</strong> - Limits power consumption and heat (1-255)</p>
+                    <p><strong>Device Name</strong> - One word, shown while pairing. Rename lights in your Home app afterwards.</p>
+                    <p><strong>After a Power Cut</strong> - Restore the last state, always turn on, or always stay off.</p>
+                    <p><strong>Color pattern lights</strong> - Adds Color 1-4 lights to your Home app. Turn on 2-4 of them to
+                    show a multi-color pattern (e.g. red and green); with all of them off the strip shows the main light's
+                    color. Each Color light is just on/off plus a color; the main light's brightness dims everything, and
+                    turning on a Color light also turns the main light on. Save Home scenes for your themes. Changing this
+                    checkbox needs a re-pair.</p>
+                    <p><strong>Color Pattern Layout / Band Size</strong> - Alternating bands of N pixels (like classic
+                    holiday bulbs), or equal blocks (halves, thirds, quarters).</p>
                 </div>
             </div>
 
@@ -1148,7 +1172,14 @@
                     <p><strong>set white_order &lt;o&gt;</strong> <span>WS2805 whites: ww_cw, cw_ww</span></p>
                     <p><strong>set order &lt;order&gt;</strong> <span>grb, rgb, brg, rbg, bgr, gbr; RGBW: add w where white goes, e.g. wrgb</span></p>
                     <p><strong>set brightness &lt;n&gt;</strong> <span>Max brightness 1-255</span></p>
-                    <p><strong>save</strong> <span>Save config to flash</span></p>
+                    <p><strong>set name &lt;name&gt;</strong> <span>Device name (one word)</span></p>
+                    <p><strong>set poweron &lt;m&gt;</strong> <span>After a power cut: restore, on, off</span></p>
+                    <p><strong>set color_lights &lt;on|off&gt;</strong> <span>Color 1-4 lights in Home (needs re-pair)</span></p>
+                    <p><strong>set pattern_layout &lt;l&gt;</strong> <span>alt or blocks</span></p>
+                    <p><strong>set pattern_group &lt;n&gt;</strong> <span>Band size in pixels (1-255)</span></p>
+                    <p><strong>pattern &lt;colors&gt;</strong> <span>Test 1-4 colors, e.g. pattern red green; pattern off (not saved)</span></p>
+                    <p><strong>effect &lt;name&gt;</strong> <span>Test rainbow, breathing, candle, chase; effect off (not saved)</span></p>
+                    <p><strong>save</strong> <span>Save config to flash and reboot</span></p>
                     <p><strong>reboot</strong> <span>Restart device</span></p>
                     <p><strong>factory</strong> <span>Erase all settings</span></p>
                 </div>
@@ -1226,6 +1257,18 @@
         const sendBtn = document.getElementById('sendBtn');
         let serialBuffer = '';
         let parseConfigBuffer = '';
+        let configLoaded = false;        // True once the device's settings filled the form
+        let reconnectAfterReboot = false; // Reconnect automatically when the device comes back
+
+        // Save only after the form shows the device's real settings, so a failed
+        // read can never write the page's placeholder values to the device
+        function updateSaveButtons() {
+            const ready = port !== null && configLoaded;
+            saveBtn.disabled = !ready;
+            saveRebootBtn.disabled = !ready;
+            saveBtn.title = ready ? '' : 'Waiting to read settings from the device';
+            saveRebootBtn.title = saveBtn.title;
+        }
 
         function log(text, type = 'response') {
             const span = document.createElement('span');
@@ -1239,8 +1282,7 @@
             connectionStatus.className = 'status ' + (connected ? 'connected' : 'disconnected');
             connectionStatus.innerHTML = `<span class="status-dot"></span><span>${connected ? 'Connected' : 'Not connected'}</span>`;
             connectBtn.textContent = connected ? 'Disconnect' : 'Connect';
-            saveBtn.disabled = !connected;
-            saveRebootBtn.disabled = !connected;
+            updateSaveButtons();
             rebootBtn.disabled = !connected;
             sendBtn.disabled = !connected;
             serialInput.disabled = !connected;
@@ -1282,19 +1324,21 @@
             }
         }
 
-        async function connect() {
+        async function connect(knownPort = null) {
             try {
-                port = await navigator.serial.requestPort();
+                port = knownPort || await navigator.serial.requestPort();
                 await port.open({ baudRate: 115200 });
 
                 const textDecoder = new TextDecoderStream();
-                const readableStreamClosed = port.readable.pipeTo(textDecoder.writable);
+                port.readable.pipeTo(textDecoder.writable).catch(() => {});
                 reader = textDecoder.readable.getReader();
 
                 const textEncoder = new TextEncoderStream();
-                const writableStreamClosed = textEncoder.readable.pipeTo(port.writable);
+                textEncoder.readable.pipeTo(port.writable).catch(() => {});
                 writer = textEncoder.writable.getWriter();
 
+                configLoaded = false;
+                parseConfigBuffer = '';
                 updateStatus(true);
                 log('Connected to device\n', 'prompt');
 
@@ -1314,28 +1358,50 @@
                     }
                 }
             } catch (e) {
-                log('Error: ' + e.message + '\n', 'error');
-                updateStatus(false);
+                if (port && !reconnectAfterReboot) {
+                    log('Error: ' + e.message + '\n', 'error');
+                }
             }
+            // Reader ended: user disconnected, or the device left USB (reboot)
+            await closePort();
+        }
+
+        async function closePort() {
+            try { if (reader) await reader.cancel(); } catch (e) {}
+            try { if (writer) await writer.close(); } catch (e) {}
+            try { if (port) await port.close(); } catch (e) {}
+            reader = null;
+            writer = null;
+            port = null;
+            configLoaded = false;
+            serialBuffer = '';
+            parseConfigBuffer = '';
+            updateStatus(false);
         }
 
         async function disconnect() {
-            if (reader) {
-                await reader.cancel();
-                reader = null;
-            }
-            if (writer) {
-                await writer.close();
-                writer = null;
-            }
-            if (port) {
-                await port.close();
-                port = null;
-            }
-            updateStatus(false);
+            reconnectAfterReboot = false;
+            await closePort();
             log('Disconnected\n', 'prompt');
-            serialBuffer = '';
-            parseConfigBuffer = '';
+        }
+
+        // After Save/Reboot the device drops off USB and comes back a few seconds
+        // later; reconnect to it (no prompt needed for an already-allowed port)
+        // so the form shows the saved settings
+        function expectReboot() {
+            reconnectAfterReboot = true;
+            log('Device is rebooting; reconnecting automatically...\n', 'prompt');
+            setTimeout(() => { reconnectAfterReboot = false; }, 30000);
+        }
+
+        if ('serial' in navigator) {
+            navigator.serial.addEventListener('connect', async (event) => {
+                if (reconnectAfterReboot && !port) {
+                    reconnectAfterReboot = false;
+                    await new Promise(r => setTimeout(r, 1500));  // let the firmware start
+                    connect(event.target);
+                }
+            });
         }
 
         async function sendCommand(cmd) {
@@ -1356,7 +1422,8 @@
             // Buffer incoming text across chunks so a line split mid-chunk doesn't
             // truncate the value (e.g. "ws2" instead of "ws2805").
             parseConfigBuffer += text;
-            const lines = parseConfigBuffer.split('\n');
+            // Firmware lines end in \r\n; split on both so no stray \r is left behind
+            const lines = parseConfigBuffer.split(/\r?\n/);
             // Keep the last element: it's either empty (line ended with \n) or a
             // partial line that will be completed by the next chunk.
             parseConfigBuffer = lines.pop();
@@ -1391,6 +1458,16 @@
                         case 'order':
                             document.getElementById('rgbOrder').value = value.trim();
                             break;
+                        case 'poweron':
+                            document.getElementById('powerOn').value = value.trim();
+                            break;
+                        case 'name':
+                            // 'name' is the last line of the config listing: the form
+                            // now holds the device's real settings, so saving is safe
+                            document.getElementById('deviceName').value = value.trim();
+                            configLoaded = true;
+                            updateSaveButtons();
+                            break;
                     }
                 }
             }
@@ -1404,76 +1481,58 @@
             }
         });
 
-        saveBtn.addEventListener('click', async () => {
-            const numLeds = document.getElementById('numLeds').value;
-            const gpioPin = document.getElementById('gpioPin').value;
-            const ledType = document.getElementById('ledType').value;
-            const rgbOrder = document.getElementById('rgbOrder').value;
-            const maxBrightness = document.getElementById('maxBrightness').value;
-            const patternLayout = document.getElementById('patternLayout').value;
-            const patternGroup = document.getElementById('patternGroup').value;
-            const colorLights = document.getElementById('colorLights').checked ? 'on' : 'off';
+        // Send every form setting to the device; returns false if the form is invalid
+        async function sendSettings() {
+            const deviceName = document.getElementById('deviceName').value.trim();
+            if (deviceName === '' || /\s/.test(deviceName)) {
+                log('Error: device name must be one word with no spaces\n', 'error');
+                return false;
+            }
+            const commands = [
+                `set leds ${document.getElementById('numLeds').value}`,
+                `set gpio ${document.getElementById('gpioPin').value}`,
+                `set type ${document.getElementById('ledType').value}`,
+                `set order ${document.getElementById('rgbOrder').value}`,
+                `set brightness ${document.getElementById('maxBrightness').value}`,
+                `set poweron ${document.getElementById('powerOn').value}`,
+                `set name ${deviceName}`,
+                `set pattern_layout ${document.getElementById('patternLayout').value}`,
+                `set pattern_group ${document.getElementById('patternGroup').value}`,
+                `set color_lights ${document.getElementById('colorLights').checked ? 'on' : 'off'}`,
+            ];
+            for (const cmd of commands) {
+                await sendCommand(cmd);
+                await new Promise(r => setTimeout(r, 100));
+            }
+            return true;
+        }
 
-            await sendCommand(`set leds ${numLeds}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set gpio ${gpioPin}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set type ${ledType}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set order ${rgbOrder}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set brightness ${maxBrightness}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set pattern_layout ${patternLayout}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set pattern_group ${patternGroup}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set color_lights ${colorLights}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand('save');
-        });
-
-        rebootBtn.addEventListener('click', async () => {
-            await sendCommand('reboot');
+        function clearQRCode() {
             qrCard.classList.remove('visible');
             qrCodeContainer.innerHTML = '';
             manualCode.textContent = '';
             serialBuffer = '';
+        }
+
+        // 'save' writes the settings and reboots the device
+        saveBtn.addEventListener('click', async () => {
+            if (!await sendSettings()) return;
+            expectReboot();
+            await sendCommand('save');
+            clearQRCode();
         });
 
         saveRebootBtn.addEventListener('click', async () => {
-            const numLeds = document.getElementById('numLeds').value;
-            const gpioPin = document.getElementById('gpioPin').value;
-            const ledType = document.getElementById('ledType').value;
-            const rgbOrder = document.getElementById('rgbOrder').value;
-            const maxBrightness = document.getElementById('maxBrightness').value;
-            const patternLayout = document.getElementById('patternLayout').value;
-            const patternGroup = document.getElementById('patternGroup').value;
-            const colorLights = document.getElementById('colorLights').checked ? 'on' : 'off';
-
-            await sendCommand(`set leds ${numLeds}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set gpio ${gpioPin}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set type ${ledType}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set order ${rgbOrder}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set brightness ${maxBrightness}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set pattern_layout ${patternLayout}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set pattern_group ${patternGroup}`);
-            await new Promise(r => setTimeout(r, 100));
-            await sendCommand(`set color_lights ${colorLights}`);
-            await new Promise(r => setTimeout(r, 100));
+            if (!await sendSettings()) return;
+            expectReboot();
             await sendCommand('save');
-            await new Promise(r => setTimeout(r, 200));
+            clearQRCode();
+        });
+
+        rebootBtn.addEventListener('click', async () => {
+            expectReboot();
             await sendCommand('reboot');
-            qrCard.classList.remove('visible');
-            qrCodeContainer.innerHTML = '';
-            manualCode.textContent = '';
-            serialBuffer = '';
+            clearQRCode();
         });
 
         document.querySelectorAll('.quick-cmd').forEach(btn => {
@@ -1483,6 +1542,9 @@
                     if (!confirm('Factory reset will erase all settings and commissioning data. Continue?')) {
                         return;
                     }
+                }
+                if (cmd === 'reboot' || cmd === 'factory') {
+                    expectReboot();
                 }
                 await sendCommand(cmd);
                 if (cmd === 'reboot' || cmd === 'factory') {
