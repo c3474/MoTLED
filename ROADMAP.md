@@ -114,6 +114,6 @@ once it is merged and tested on the strip.
       and the page reconnects after a reboot.
 - [x] **H-5 Firmware version on the device.** CI stamps the commit into the
       build (e.g. 0.7.1-591a412); `config` and the Configure tab show it.
-- [ ] **H-3 Rebrand and restyle the web installer.** Give it its own look
+- [x] **H-3 Rebrand and restyle the web installer.** Give it its own look
       (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
       Change its title and links to MoTLED and credit upstream TLED.
