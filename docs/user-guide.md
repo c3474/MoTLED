@@ -71,6 +71,7 @@ lead but **keep the ground connected**.
 | **After a Power Cut** | Restore the last state, always turn on, or always stay off. |
 | **Color pattern lights** | Adds the Color 1-4 lights to Home ([section 5](#5-color-patterns-color-1-4)). Leave off for one simple light. |
 | **Effect switches** | Adds Rainbow, Chase and Twinkle to Home ([section 6](#6-effects-rainbow-chase-twinkle)). Leave off for one simple light. |
+| **White only** | **WS2805 strips only.** The light shows in Home as a tunable white light: brightness plus warm-to-cool white (3000-6500 K), no color wheel. Good for kitchens and under-cabinet lights. Turns the color and effect extras off. |
 | **Color Pattern Layout / Band Size** | How Color 1-4 share the strip: alternating bands of N pixels (like classic holiday bulbs), or equal blocks (halves, thirds, quarters). |
 
 4. Click **Save and reboot**. The board restarts and the page reconnects by itself.
@@ -106,6 +107,7 @@ What you see depends on the two feature checkboxes:
 | Features on | Tiles in Home |
 |---|---|
 | Neither | **One light**: on/off, brightness, color. That's all. |
+| White only (WS2805) | **One white light**: on/off, brightness and white temperature. |
 | Color pattern lights | The main light **plus 4 Color lights**. |
 | Effect switches | The main light **plus 3 on/off switches** (Rainbow, Chase, Twinkle). |
 
@@ -200,7 +202,7 @@ Home Screen icon (Shortcuts app → Run scene).
 
 ## 8. Turning features on or off (re-pairing)
 
-Ticking or unticking **Color pattern lights** or **Effect switches** changes
+Ticking or unticking **Color pattern lights**, **Effect switches** or **White only** changes
 which tiles the light shows in Home. Apple Home doesn't pick that up on its
 own, so the light must be removed and added again:
 

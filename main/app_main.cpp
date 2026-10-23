@@ -316,18 +316,42 @@ extern "C" void app_main()
     node_t *node = node::create(&node_config, app_attribute_update_cb, app_identification_cb);
     ABORT_APP_ON_FAILURE(node != nullptr, ESP_LOGE(TAG, "Failed to create Matter node"));
 
-    /* Create the main light: dimmable + HSV color (plus ColorTemperature on WS2805) */
-    endpoint_t *endpoint = create_hsv_light(node, TLED_DEFAULT_POWER, TLED_DEFAULT_BRIGHTNESS,
-                                            0, 254, light_handle);
-    ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create dimmable light endpoint"));
-
+    /* White-only (WS2805): the main light is a tunable white light (power,
+     * brightness, color temperature) with no color wheel, and the color/effect
+     * extras are skipped since they draw on the RGB LEDs */
+    bool white_only = config->feature_white_only && config->chipset == CHIPSET_WS2805;
     bool has_color_temp = (config->chipset == CHIPSET_WS2805);
+    endpoint_t *endpoint;
+
+    if (white_only) {
+        color_temperature_light::config_t ct_light;
+        ct_light.on_off.on_off = TLED_DEFAULT_POWER;
+        ct_light.on_off_lighting.start_up_on_off = nullptr;
+        ct_light.level_control.current_level = TLED_DEFAULT_BRIGHTNESS;
+        ct_light.level_control.on_level = TLED_DEFAULT_BRIGHTNESS;
+        ct_light.level_control_lighting.start_up_current_level = nullptr;
+        ct_light.color_control.color_mode = static_cast<uint8_t>(ColorControl::ColorModeEnum::kColorTemperatureMireds);
+        ct_light.color_control.enhanced_color_mode = static_cast<uint8_t>(ColorControl::ColorModeEnum::kColorTemperatureMireds);
+        ct_light.color_control_color_temperature.color_temperature_mireds = TLED_DEFAULT_CT_MIREDS;
+        ct_light.color_control_color_temperature.color_temp_physical_min_mireds = TLED_CT_MIN_MIREDS;  // 6500K cool
+        ct_light.color_control_color_temperature.color_temp_physical_max_mireds = TLED_CT_MAX_MIREDS;  // 3000K warm
+        ct_light.color_control_color_temperature.couple_color_temp_to_level_min_mireds = TLED_CT_MIN_MIREDS;
+        ct_light.color_control_color_temperature.start_up_color_temperature_mireds = nullable<uint16_t>(TLED_DEFAULT_CT_MIREDS);
+        endpoint = color_temperature_light::create(node, &ct_light, ENDPOINT_FLAG_NONE, light_handle);
+        ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create white light endpoint"));
+    } else {
+        /* Create the main light: dimmable + HSV color (plus ColorTemperature on WS2805) */
+        endpoint = create_hsv_light(node, TLED_DEFAULT_POWER, TLED_DEFAULT_BRIGHTNESS,
+                                    0, 254, light_handle);
+        ABORT_APP_ON_FAILURE(endpoint != nullptr, ESP_LOGE(TAG, "Failed to create dimmable light endpoint"));
+    }
+
     cluster_t *color_cluster = cluster::get(endpoint, ColorControl::Id);
 
     /* WS2805 has dedicated warm/cool white channels - expose color temperature.
      * Note: adding/removing this feature changes the cluster shape, so switching
      * strip type to/from WS2805 requires re-commissioning the device. */
-    if (has_color_temp) {
+    if (has_color_temp && !white_only) {
         cluster::color_control::feature::color_temperature::config_t ct_config;
         ct_config.color_temperature_mireds = TLED_DEFAULT_CT_MIREDS;
         ct_config.color_temp_physical_min_mireds = TLED_CT_MIN_MIREDS;  // 6500K cool
@@ -338,8 +362,9 @@ extern "C" void app_main()
     }
 
     light_endpoint_id = endpoint::get_id(endpoint);
-    ESP_LOGI(TAG, "Color Light (HSV%s) created with endpoint_id %d",
-             has_color_temp ? "+CT" : "", light_endpoint_id);
+    ESP_LOGI(TAG, "%s created with endpoint_id %d",
+             white_only ? "White Light (CT only)" : (has_color_temp ? "Color Light (HSV+CT)" : "Color Light (HSV)"),
+             light_endpoint_id);
 
     /* Optional "Color 1-4" lights: the ones switched on make up a multi-color
      * pattern on the strip. Default colors (off): red, green, blue, white.
@@ -348,7 +373,7 @@ extern "C" void app_main()
     static const uint8_t slot_defaults[TLED_PATTERN_MAX_COLORS][2] = {
         {0, 254}, {85, 254}, {169, 254}, {0, 0},   // hue, saturation (Matter 0-254)
     };
-    int num_color_slots = config->feature_color_lights ? TLED_PATTERN_MAX_COLORS : 0;
+    int num_color_slots = (config->feature_color_lights && !white_only) ? TLED_PATTERN_MAX_COLORS : 0;
     for (int i = 0; i < num_color_slots; i++) {
         endpoint_t *slot_endpoint = create_hsv_light(node, false, 254, slot_defaults[i][0],
                                                      slot_defaults[i][1], light_handle);
@@ -360,7 +385,7 @@ extern "C" void app_main()
     /* Optional effect switches (Rainbow, Chase, Twinkle): plain on/off lights in
      * Home, no sliders. They layer motion on whatever colors are showing. Like the
      * Color lights, turning this feature on/off needs a re-pair. */
-    if (config->feature_effect_switches) {
+    if (config->feature_effect_switches && !white_only) {
         static const char *effect_names[TLED_NUM_EFFECT_SWITCHES] = {"Rainbow", "Chase", "Twinkle"};
         for (int i = 0; i < TLED_NUM_EFFECT_SWITCHES; i++) {
             on_off_light::config_t switch_config;

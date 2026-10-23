@@ -54,7 +54,7 @@ static void set_defaults(tled_config_t *config)
     config->pattern_group = TLED_DEFAULT_PATTERN_GROUP;
     config->feature_color_lights = TLED_DEFAULT_FEATURE_COLOR_LIGHTS;
     config->feature_effect_switches = TLED_DEFAULT_FEATURE_EFFECT_SWITCHES;
-    config->reserved = 0;
+    config->feature_white_only = 0;
     strncpy(config->device_name, TLED_DEFAULT_DEVICE_NAME, sizeof(config->device_name) - 1);
     config->device_name[sizeof(config->device_name) - 1] = '\0';
     config->config_version = TLED_CONFIG_VERSION;
@@ -397,9 +397,10 @@ static bool validate_config(const tled_config_t *config)
     }
 
     // Check optional feature flags
-    if (config->feature_color_lights > 1 || config->feature_effect_switches > 1) {
-        ESP_LOGW(TAG, "Invalid feature flags: %d/%d", config->feature_color_lights,
-                 config->feature_effect_switches);
+    if (config->feature_color_lights > 1 || config->feature_effect_switches > 1 ||
+        config->feature_white_only > 1) {
+        ESP_LOGW(TAG, "Invalid feature flags: %d/%d/%d", config->feature_color_lights,
+                 config->feature_effect_switches, config->feature_white_only);
         return false;
     }
 

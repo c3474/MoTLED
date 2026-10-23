@@ -953,12 +953,19 @@
                     </div>
                     <div class="config-item">
                         <label class="check-label">
+                            <input type="checkbox" id="whiteOnly">
+                            <span>White only (WS2805: brightness and white temperature, no colors)</span>
+                        </label>
+                    </div>
+                    <div class="config-item">
+                        <label class="check-label">
                             <input type="checkbox" id="effectSwitches">
                             <span>Effect switches (adds Rainbow, Chase and Twinkle to your Home app)</span>
                         </label>
                     </div>
                     <p class="config-hint">
-                        Leave both unchecked for one simple light. Changing either needs a re-pair: after
+                        Leave these unchecked for one simple light. White only replaces the color controls,
+                        so it turns the other two off. Changing any of them needs a re-pair: after
                         Save and reboot, remove the device in your Home app and add it again.
                     </p>
 
@@ -1107,6 +1114,9 @@
                     color. Each Color light is just on/off plus a color; the main light's brightness dims everything, and
                     turning on a Color light also turns the main light on. Save Home scenes for your themes. Changing this
                     checkbox needs a re-pair.</p>
+                    <p><strong>White only</strong> - For WS2805 strips (RGB + warm and cool white). The light shows in your
+                    Home app as a tunable white light: brightness plus warm-to-cool white, no color wheel. The color and
+                    effect extras are turned off. Changing this checkbox needs a re-pair.</p>
                     <p><strong>Effect switches</strong> - Adds Rainbow, Chase and Twinkle on/off switches to your Home
                     app. They combine and work on whatever is showing: Rainbow fills the strip with a rainbow, Chase makes
                     the colors march along the strip, Twinkle adds random sparkles. The main light's brightness dims them,
@@ -1134,6 +1144,7 @@
                     <p><strong>set pattern_layout &lt;l&gt;</strong> <span>alt or blocks</span></p>
                     <p><strong>set pattern_group &lt;n&gt;</strong> <span>Band size in pixels (1-255)</span></p>
                     <p><strong>pattern &lt;colors&gt;</strong> <span>Test 1-4 colors, e.g. pattern red green; pattern off (not saved)</span></p>
+                    <p><strong>set white_only &lt;on|off&gt;</strong> <span>WS2805: tunable white only in Home (needs re-pair)</span></p>
                     <p><strong>set effect_switches &lt;on|off&gt;</strong> <span>Rainbow/Chase/Twinkle in Home (needs re-pair)</span></p>
                     <p><strong>motion &lt;m...&gt;</strong> <span>Test rainbow, chase, twinkle (any mix); motion off (not saved)</span></p>
                     <p><strong>effect &lt;name&gt;</strong> <span>Test rainbow, breathing, candle, chase; effect off (not saved)</span></p>
@@ -1380,6 +1391,19 @@
         }
         document.getElementById('ledType').addEventListener('change', updateOrderHint);
 
+        // White only (WS2805) replaces the color controls, so the color and
+        // effect extras don't apply; untick and grey them out while it's on
+        function updateFeatureChecks() {
+            const whiteOnly = document.getElementById('whiteOnly').checked;
+            for (const id of ['colorLights', 'effectSwitches']) {
+                const box = document.getElementById(id);
+                if (whiteOnly) box.checked = false;
+                box.disabled = whiteOnly;
+                box.closest('.config-item').style.opacity = whiteOnly ? 0.5 : 1;
+            }
+        }
+        document.getElementById('whiteOnly').addEventListener('change', updateFeatureChecks);
+
         function parseConfig(text) {
             // Buffer incoming text across chunks so a line split mid-chunk doesn't
             // truncate the value (e.g. "ws2" instead of "ws2805").
@@ -1415,6 +1439,10 @@
                             break;
                         case 'effect_switches':
                             document.getElementById('effectSwitches').checked = value.trim() === 'on';
+                            break;
+                        case 'white_only':
+                            document.getElementById('whiteOnly').checked = value.trim() === 'on';
+                            updateFeatureChecks();
                             break;
                         case 'firmware':
                             deviceFirmware.textContent = `Device firmware: ${value.trim()}`;
@@ -1468,6 +1496,7 @@
                 `set pattern_group ${document.getElementById('patternGroup').value}`,
                 `set color_lights ${document.getElementById('colorLights').checked ? 'on' : 'off'}`,
                 `set effect_switches ${document.getElementById('effectSwitches').checked ? 'on' : 'off'}`,
+                `set white_only ${document.getElementById('whiteOnly').checked ? 'on' : 'off'}`,
             ];
             for (const cmd of commands) {
                 await sendCommand(cmd);

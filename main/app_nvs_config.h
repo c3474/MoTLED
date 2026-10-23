@@ -80,7 +80,8 @@ typedef struct {
     uint8_t pattern_group;      // Pixels per color band when alternating (1-255)
     uint8_t feature_color_lights; // 1 = show "Color 1-4" lights in Home (changing it needs a re-pair)
     uint8_t feature_effect_switches; // 1 = show Rainbow/Chase/Twinkle switches in Home (needs a re-pair)
-    uint8_t reserved;           // Spare; keeps this layout's size distinct from v7's
+    uint8_t feature_white_only; // 1 = WS2805 shows in Home as a tunable white light only (needs a re-pair).
+                                // Was a spare byte in v8, so existing records already hold 0 (off).
     char device_name[32];       // Custom device name
     uint8_t config_version;     // Config version for migration
     bool configured;            // True if config has been set

@@ -394,6 +394,7 @@ static void print_help(void) {
     serial_write("                      'pattern off' returns to one color (not saved)\r\n");
     serial_write("  set color_lights <on|off> - Show Color 1-4 lights in Home (needs re-pair)\r\n");
     serial_write("  set effect_switches <on|off> - Show Rainbow/Chase/Twinkle in Home (needs re-pair)\r\n");
+    serial_write("  set white_only <on|off> - WS2805: tunable white light only in Home (needs re-pair)\r\n");
     serial_write("  set pattern_layout <l> - Color 1-4 pattern: alt (repeating bands) or blocks\r\n");
     serial_write("  set pattern_group <n>  - Pixels per band when alternating (1-255)\r\n");
     serial_write("  motion <m...>     - Rainbow, chase and/or twinkle on the current colors,\r\n");
@@ -509,6 +510,7 @@ static void print_config(void) {
     serial_printf("  pattern_group = %d\r\n", cfg->pattern_group);
     serial_printf("  color_lights = %s\r\n", cfg->feature_color_lights ? "on" : "off");
     serial_printf("  effect_switches = %s\r\n", cfg->feature_effect_switches ? "on" : "off");
+    serial_printf("  white_only = %s\r\n", cfg->feature_white_only ? "on" : "off");
     serial_printf("  name       = %s\r\n", cfg->device_name);
     serial_write("\r\n");
 }
@@ -662,6 +664,18 @@ static void handle_set_command(const char *param, const char *value) {
             serial_write("Note: after 'save', remove and re-add the device in your Home app\r\n");
         } else {
             serial_write("Error: effect_switches must be on or off\r\n");
+        }
+    }
+    else if (strcmp(param, "white_only") == 0) {
+        if (strcmp(value, "on") == 0 || strcmp(value, "off") == 0) {
+            cfg->feature_white_only = (strcmp(value, "on") == 0) ? 1 : 0;
+            serial_printf("Set white_only = %s\r\n", value);
+            if (cfg->feature_white_only && cfg->chipset != CHIPSET_WS2805) {
+                serial_write("Note: white_only only applies to type ws2805\r\n");
+            }
+            serial_write("Note: after 'save', remove and re-add the device in your Home app\r\n");
+        } else {
+            serial_write("Error: white_only must be on or off\r\n");
         }
     }
     else if (strcmp(param, "name") == 0) {

@@ -51,7 +51,8 @@ once it is merged and tested on the strip.
       is one simple light. Devices upgrading from the first Color 1-4 release
       keep them. Changing a checkbox needs a re-pair.
   - [x] "Effect switches" checkbox (Rainbow, Chase, Twinkle), off by default.
-- [ ] **M-9 White-only mode for WS2805 (kitchen).** Plan: a WS2805 RGBCCT
+- [ ] **M-9 White-only mode for WS2805 (kitchen). Built 2026-10-23; needs a
+      test on a real WS2805 strip before ticking.** Plan: a WS2805 RGBCCT
       strip (already supported, with a color temperature slider). Add a
       "white only" option so Home shows just brightness and color
       temperature, with no color wheel. Plain warm/cool-only addressable

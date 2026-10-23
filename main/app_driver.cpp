@@ -128,6 +128,7 @@ typedef struct {
     uint32_t chase_offset;      // Pixels the colors have moved
     TickType_t chase_last_step;
     uint8_t *twinkle;           // Per-pixel sparkle level (0-255), NULL if unavailable
+    bool white_only;            // WS2805 tunable-white mode: always color temperature, no HSV
 
     TaskHandle_t task_handle;
     SemaphoreHandle_t mutex;
@@ -181,6 +182,7 @@ static light_driver_t s_light_driver = {
     .chase_offset = 0,
     .chase_last_step = 0,
     .twinkle = NULL,
+    .white_only = false,
     .task_handle = NULL,
     .mutex = NULL,
     .num_leds = TLED_DEFAULT_NUM_LEDS,
@@ -1547,11 +1549,16 @@ esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id)
         val = esp_matter_uint8(driver->brightness);
         attribute::update(endpoint_id, LevelControl::Id, LevelControl::Attributes::CurrentLevel::Id, &val);
 
-        val = esp_matter_uint8(driver->hue);
-        attribute::update(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id, &val);
+        if (driver->white_only) {
+            // Tunable-white light: no hue/saturation attributes, always color temperature
+            driver->color_mode = COLOR_MODE_CT;
+        } else {
+            val = esp_matter_uint8(driver->hue);
+            attribute::update(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentHue::Id, &val);
 
-        val = esp_matter_uint8(driver->saturation);
-        attribute::update(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id, &val);
+            val = esp_matter_uint8(driver->saturation);
+            attribute::update(endpoint_id, ColorControl::Id, ColorControl::Attributes::CurrentSaturation::Id, &val);
+        }
 
         // Restore color temperature state on WS2805 (attribute only exists there);
         // other chipsets always run in HSV mode
@@ -1609,7 +1616,7 @@ esp_err_t app_driver_light_set_defaults(uint16_t endpoint_id)
         driver->saturation = val.val.u8;
     }
 
-    driver->color_mode = COLOR_MODE_HSV;
+    driver->color_mode = driver->white_only ? COLOR_MODE_CT : COLOR_MODE_HSV;
 
     // Get and apply power state
     attribute = attribute::get(endpoint_id, OnOff::Id, OnOff::Attributes::OnOff::Id);
@@ -1656,6 +1663,7 @@ app_driver_handle_t app_driver_light_init(void)
     s_light_driver.white_order = config->white_order;
     s_light_driver.white_pos = config->white_pos;
     s_light_driver.pattern_layout = config->pattern_layout;
+    s_light_driver.white_only = config->feature_white_only && config->chipset == CHIPSET_WS2805;
     s_light_driver.pattern_group = config->pattern_group;
 
     static const char *rgb_order_names[] = {"GRB", "RGB", "BRG", "RBG", "BGR", "GBR"};
