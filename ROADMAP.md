@@ -25,15 +25,10 @@ once it is merged and tested on the strip.
 - [x] **M-3b Low-end dimming.** At 1% in Apple Home the strip looks off;
       2% is a nice dim glow. Likely the brightness scaling rounds the lowest
       levels to 0. Make sure "on" always lights at least the dimmest step.
-- [ ] **M-4 Offer upstream.** Open a PR or issue on `maui1911/TLED` with the
-      color-order change.
-
-## Phase 2: features
-
-Priorities come from what permanent-lighting products (Govee, Trimlight,
-JellyFish) and WLED put front and center: repeating multi-color patterns
-first, then motion on top of them. No hard usage statistics were found.
-
+- [ ] **M-4 Offer upstream. On hold (2026-10-23):** keep MoTLED independent
+      for now. A draft of three small upstream PRs (Configure-tab parser fix,
+      low-brightness fix, WRGB orders) is kept outside the repo at
+      `/Users/Shared/MoTLED/upstream-contributions-draft.md`.
 - [ ] **M-5 Color patterns (top priority).** 2-4 colors along the strip,
       alternating every N pixels (default 3) or split into equal blocks.
   - [x] Step 1: pattern engine + serial `pattern` command; tested on the strip.
