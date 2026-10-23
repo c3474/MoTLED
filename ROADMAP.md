@@ -115,6 +115,11 @@ once it is merged and tested on the strip.
       and the page reconnects after a reboot.
 - [x] **H-5 Firmware version on the device.** CI stamps the commit into the
       build (e.g. 0.7.1-591a412); `config` and the Configure tab show it.
+- [x] **H-6 Pairing controls.** Configure tab buttons: Show pairing code
+      (opens pairing for 15 min even when still paired) and Forget pairings
+      (clears all pairings, keeps LED settings). Removing a light in Apple
+      Home leaves the iPhone's own pairing (Settings > General > Matter
+      Accessories), so the board kept saying "Already paired".
 - [x] **H-3 Rebrand and restyle the web installer.** Give it its own look
       (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
       Change its title and links to MoTLED and credit upstream TLED.

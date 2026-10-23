@@ -25,6 +25,7 @@
 static const char *TAG = "serial_config";
 
 #define SERIAL_BUF_SIZE 256
+#define PAIRING_WINDOW_SECONDS 900  // 'pairing open' keeps pairing available for 15 minutes
 #define CMD_BUF_SIZE 128
 
 static bool s_config_active = false;
@@ -165,15 +166,42 @@ static void process_command(const char *cmd) {
         }
     }
     else if (strcmp(command, "pairing") == 0) {
-        // Print the pairing QR/manual codes while not paired (they're otherwise
-        // only printed at boot, which a reconnecting web page can miss)
-        chip::DeviceLayer::SystemLayer().ScheduleLambda([]() {
-            if (chip::Server::GetInstance().GetFabricTable().FabricCount() == 0) {
-                PrintOnboardingCodes(chip::RendezvousInformationFlags(chip::RendezvousInformationFlag::kBLE));
-            } else {
-                serial_write("Already paired. Remove it in your Home app to pair again.\r\n");
+        // 'pairing': print the pairing QR/manual codes while not paired (they're
+        // otherwise only printed at boot, which a reconnecting web page can miss).
+        // 'pairing open': also open a pairing window when already paired, so the
+        // light can be added again (e.g. after an incomplete removal) or added to
+        // a second app.
+        bool open_window = (parsed >= 2 && strcmp(param, "open") == 0);
+        chip::DeviceLayer::SystemLayer().ScheduleLambda([open_window]() {
+            bool paired = chip::Server::GetInstance().GetFabricTable().FabricCount() > 0;
+            if (paired && !open_window) {
+                serial_write("Already paired. 'pairing open' shows a pairing code anyway;\r\n");
+                serial_write("'unpair' forgets all pairings (LED settings are kept).\r\n");
+                return;
             }
+            if (paired) {
+                chip::CommissioningWindowManager &mgr =
+                    chip::Server::GetInstance().GetCommissioningWindowManager();
+                if (!mgr.IsCommissioningWindowOpen()) {
+                    CHIP_ERROR err = mgr.OpenBasicCommissioningWindow(
+                        chip::System::Clock::Seconds16(PAIRING_WINDOW_SECONDS),
+                        chip::CommissioningWindowAdvertisement::kAllSupported);
+                    if (err != CHIP_NO_ERROR) {
+                        serial_printf("Error: couldn't open pairing (%" CHIP_ERROR_FORMAT ")\r\n", err.Format());
+                        return;
+                    }
+                }
+                serial_write("Pairing is open for 15 minutes.\r\n");
+            }
+            PrintOnboardingCodes(chip::RendezvousInformationFlags(chip::RendezvousInformationFlag::kBLE));
         });
+    }
+    else if (strcmp(command, "unpair") == 0) {
+        // Clear Matter pairings and network credentials only; the LED settings
+        // live in their own NVS namespace and are kept. Reboots ready to pair.
+        serial_write("Forgetting all pairings (LED settings are kept). Rebooting...\r\n");
+        vTaskDelay(pdMS_TO_TICKS(500));
+        esp_matter::factory_reset();
     }
     else if (strcmp(command, "effect") == 0) {
         handle_effect_command(parsed >= 2 ? param : NULL);
@@ -400,6 +428,8 @@ static void print_help(void) {
     serial_write("  motion <m...>     - Rainbow, chase and/or twinkle on the current colors,\r\n");
     serial_write("                      e.g. 'motion chase twinkle'; 'motion off' (not saved)\r\n");
     serial_write("  pairing           - Show the pairing QR code (only while not paired)\r\n");
+    serial_write("  pairing open      - Show a pairing code even when paired (15 minutes)\r\n");
+    serial_write("  unpair            - Forget all pairings, keep LED settings, reboot\r\n");
     serial_write("  save              - Save config and reboot\r\n");
     serial_write("  reboot            - Reboot without saving\r\n");
     serial_write("  factory           - Reset to factory defaults\r\n");

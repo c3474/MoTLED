@@ -211,6 +211,12 @@ own, so the light must be removed and added again:
    gear → **Remove Accessory**). Removing it while the board is online lets the
    board know it's free to pair again.
 3. Add it again with the QR code ([section 3](#3-add-it-to-apple-home)).
+   - **No QR code?** Your iPhone keeps a pairing of its own that **Remove
+     Accessory** doesn't clear. Either remove the light under iPhone **Settings
+     → General → Matter Accessories**, or use the Configure tab's buttons:
+     **Show pairing code** opens pairing for 15 minutes even though the board
+     is still paired; **Forget pairings** clears every pairing on the board
+     (LED settings are kept) and restarts ready to pair.
 4. Rename the tiles and rebuild your scenes. They were deleted with the old
    accessory.
 
@@ -244,8 +250,9 @@ Updates never require re-pairing unless the release notes say they do.
 | **Turning on a Color light or effect seems to do nothing** | Make sure you're using the right tiles: rename them ([section 4](#4-your-lights-in-the-home-app)). The pattern only shows while the main light is on; turning on a Color light or effect turns it on automatically. |
 | **New tiles didn't appear after ticking a feature** | Re-pair ([section 8](#8-turning-features-on-or-off-re-pairing)). |
 | **Home says "No Response"** | Check the board has power, and that a Thread border router (HomePod mini or Apple TV) is on and nearby. It can take a minute to reconnect after a reboot. |
-| **No QR code on the Configure tab** | The board is still paired: the Serial Console says "Already paired". Remove it in the Home app first (with the board powered on), then reconnect. |
-| **Can't add it to Home again after removing it** | The board still thinks it's paired (it was removed while offline), so it shows "Already paired" and no QR code. In the **Serial Console** on the Configure tab, run `factory`. **This also resets all LED settings**, so note them first. |
+| **No QR code on the Configure tab** | The board is still paired: the Serial Console says "Already paired". Click **Show pairing code** to pair anyway (open for 15 minutes). |
+| **Can't add it to Home again after removing it** | The board still holds a pairing: your iPhone keeps one of its own (**Settings → General → Matter Accessories**), or it was removed while offline. Remove it there, or click **Forget pairings** on the Configure tab: it clears every pairing, **keeps your LED settings**, and restarts ready to pair. |
+| **Start completely fresh** | In the Serial Console, run `factory`. This clears pairings **and** all LED settings. |
 | **Lights come on after a power cut when you don't want them to** | Change **After a Power Cut** on the Configure tab. |
 
 For advanced users, the **Docs** tab on the web page lists every serial

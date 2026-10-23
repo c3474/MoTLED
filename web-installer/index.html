@@ -864,6 +864,15 @@
                     <button id="connectBtn" class="btn btn-primary">Connect</button>
                     <button id="rebootBtn" class="btn" disabled>Reboot</button>
                 </div>
+                <div class="btn-row">
+                    <button id="showPairingBtn" class="btn" disabled>Show pairing code</button>
+                    <button id="forgetPairingsBtn" class="btn btn-danger" disabled>Forget pairings</button>
+                </div>
+                <p class="config-hint" style="margin-bottom: 1.25rem;">
+                    Removed the light from your Home app but no QR code appears? <strong>Show pairing code</strong>
+                    lets you add it again within 15 minutes. <strong>Forget pairings</strong> clears every pairing
+                    (your LED settings are kept) and restarts ready to pair.
+                </p>
 
                 <div id="qrCard" class="qr-card">
                     <h3>Pairing QR code</h3>
@@ -1069,6 +1078,9 @@
                         tiles you don't want to off.</li>
                         <li><strong>Turning a feature checkbox on or off</strong> - remove the light in Home (with the
                         board powered) and add it again.</li>
+                        <li><strong>No QR code after removing it?</strong> Your iPhone may still hold its own pairing
+                        (Settings, General, Matter Accessories). Or use <strong>Show pairing code</strong> or
+                        <strong>Forget pairings</strong> on the Configure tab.</li>
                     </ul>
                 </div>
             </div>
@@ -1149,6 +1161,8 @@
                     <p><strong>motion &lt;m...&gt;</strong> <span>Test rainbow, chase, twinkle (any mix); motion off (not saved)</span></p>
                     <p><strong>effect &lt;name&gt;</strong> <span>Test rainbow, breathing, candle, chase; effect off (not saved)</span></p>
                     <p><strong>pairing</strong> <span>Show the pairing QR code (while not paired)</span></p>
+                    <p><strong>pairing open</strong> <span>Show a pairing code even when paired (15 minutes)</span></p>
+                    <p><strong>unpair</strong> <span>Forget all pairings, keep LED settings, reboot</span></p>
                     <p><strong>save</strong> <span>Save config to flash and reboot</span></p>
                     <p><strong>reboot</strong> <span>Restart device</span></p>
                     <p><strong>factory</strong> <span>Erase all settings</span></p>
@@ -1218,6 +1232,8 @@
         const saveBtn = document.getElementById('saveBtn');
         const saveRebootBtn = document.getElementById('saveRebootBtn');
         const rebootBtn = document.getElementById('rebootBtn');
+        const showPairingBtn = document.getElementById('showPairingBtn');
+        const forgetPairingsBtn = document.getElementById('forgetPairingsBtn');
         const terminal = document.getElementById('terminal');
         const connectionStatus = document.getElementById('connectionStatus');
         const qrCard = document.getElementById('qrCard');
@@ -1255,6 +1271,8 @@
             connectBtn.textContent = connected ? 'Disconnect' : 'Connect';
             updateSaveButtons();
             rebootBtn.disabled = !connected;
+            showPairingBtn.disabled = !connected;
+            forgetPairingsBtn.disabled = !connected;
             sendBtn.disabled = !connected;
             serialInput.disabled = !connected;
             document.querySelectorAll('.quick-cmd').forEach(btn => btn.disabled = !connected);
@@ -1524,6 +1542,21 @@
             if (!await sendSettings()) return;
             expectReboot();
             await sendCommand('save');
+            clearQRCode();
+        });
+
+        // Open a pairing window even if the board still thinks it's paired
+        showPairingBtn.addEventListener('click', async () => {
+            clearQRCode();
+            await sendCommand('pairing open');
+        });
+
+        forgetPairingsBtn.addEventListener('click', async () => {
+            if (!confirm('Forget all pairings? The light will stop working in your Home app until you add it again. Your LED settings are kept.')) {
+                return;
+            }
+            expectReboot();
+            await sendCommand('unpair');
             clearQRCode();
         });
 
