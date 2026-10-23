@@ -25,6 +25,7 @@
             --border-bright: #4f545d;
             --text: #eceff3;
             --text-dim: #a6acb6;
+            --led: #4ff0dc;            /* Logo LEDs: brighter than the UI accent */
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -82,7 +83,8 @@
         }
 
         .logo-matrix .led-on {
-            fill: var(--cyan);
+            fill: var(--led);
+            filter: drop-shadow(0 0 3px #4ff0dc66);
             animation: breathe 3.5s ease-in-out infinite;
         }
 
@@ -814,7 +816,7 @@
                             <line x1="60" y1="50" x2="70" y2="50" stroke="var(--cyan)" stroke-width="2"/>
                         </svg>
                     </div>
-                    <h3>Flash Firmware to ESP32-C6</h3>
+                    <h3>Flash firmware to your ESP32-C6</h3>
                     <p>Connect your board via USB and click below. Works directly in Chrome or Edge - no software install needed.</p>
                     <esp-web-install-button manifest="manifest.json">
                         <button slot="activate" class="btn btn-primary">Install MoTLED</button>
@@ -825,7 +827,7 @@
             </div>
 
             <div class="card">
-                <h2>After Flashing</h2>
+                <h2>After flashing</h2>
                 <div class="steps">
                     <div class="step">
                         <span class="step-num">1</span>
@@ -837,7 +839,7 @@
                     </div>
                     <div class="step">
                         <span class="step-num">3</span>
-                        <span class="step-text">Click <strong>Save & Reboot</strong> to apply settings</span>
+                        <span class="step-text">Click <strong>Save and reboot</strong> to apply settings</span>
                     </div>
                     <div class="step">
                         <span class="step-num">4</span>
@@ -850,21 +852,21 @@
         <!-- Configure Tab -->
         <div id="configure" class="tab-content">
             <div class="card">
-                <h2>Device Connection</h2>
+                <h2>Device connection</h2>
 
                 <div id="connectionStatus" class="status disconnected">
                     <span class="status-dot"></span>
                     <span>Not connected</span>
                 </div>
 
-                <p id="deviceFirmware" class="config-hint"></p>
+                <p id="deviceFirmware" class="config-hint" style="margin-bottom: 0.75rem;"></p>
                 <div class="btn-row">
                     <button id="connectBtn" class="btn btn-primary">Connect</button>
                     <button id="rebootBtn" class="btn" disabled>Reboot</button>
                 </div>
 
                 <div id="qrCard" class="qr-card">
-                    <h3>Commission QR Code</h3>
+                    <h3>Pairing QR code</h3>
                     <p>Scan with your smart home app:</p>
                     <div id="qrCodeContainer"></div>
                     <p id="manualCode"></p>
@@ -872,7 +874,7 @@
             </div>
 
             <div class="card">
-                <h2>LED Configuration</h2>
+                <h2>LED configuration</h2>
                 <div class="config-grid">
                     <div class="config-row">
                         <div class="config-item">
@@ -880,14 +882,14 @@
                             <input type="number" id="numLeds" min="1" max="1000" value="10">
                         </div>
                         <div class="config-item">
-                            <label for="gpioPin">GPIO Pin</label>
+                            <label for="gpioPin">GPIO pin</label>
                             <input type="number" id="gpioPin" min="0" max="21" value="5">
                         </div>
                     </div>
 
                     <div class="config-row">
                         <div class="config-item">
-                            <label for="ledType">LED Type</label>
+                            <label for="ledType">LED type</label>
                             <select id="ledType">
                                 <option value="ws2812b">WS2812B</option>
                                 <option value="ws2811">WS2811</option>
@@ -896,7 +898,7 @@
                             </select>
                         </div>
                         <div class="config-item">
-                            <label for="rgbOrder">Color Order</label>
+                            <label for="rgbOrder">Color order</label>
                             <select id="rgbOrder">
                                 <optgroup label="RGB (RGBW: white last)">
                                     <option value="grb">GRB</option>
@@ -924,17 +926,17 @@
                     </p>
 
                     <div class="config-item">
-                        <label for="maxBrightness">Max Brightness (1-255)</label>
+                        <label for="maxBrightness">Max brightness (1-255)</label>
                         <input type="number" id="maxBrightness" min="1" max="255" value="255">
                     </div>
 
                     <div class="config-row">
                         <div class="config-item">
-                            <label for="deviceName">Device Name (one word)</label>
+                            <label for="deviceName">Device name (one word)</label>
                             <input type="text" id="deviceName" maxlength="31" value="TLED">
                         </div>
                         <div class="config-item">
-                            <label for="powerOn">After a Power Cut</label>
+                            <label for="powerOn">After a power cut</label>
                             <select id="powerOn">
                                 <option value="restore">Restore last state</option>
                                 <option value="on">Always turn on</option>
@@ -957,19 +959,19 @@
                     </div>
                     <p class="config-hint">
                         Leave both unchecked for one simple light. Changing either needs a re-pair: after
-                        Save &amp; Reboot, remove the device in your Home app and add it again.
+                        Save and reboot, remove the device in your Home app and add it again.
                     </p>
 
                     <div class="config-row">
                         <div class="config-item">
-                            <label for="patternLayout">Color Pattern Layout</label>
+                            <label for="patternLayout">Color pattern layout</label>
                             <select id="patternLayout">
                                 <option value="alt">Alternating bands</option>
                                 <option value="blocks">Blocks (halves, thirds...)</option>
                             </select>
                         </div>
                         <div class="config-item">
-                            <label for="patternGroup">Band Size (pixels)</label>
+                            <label for="patternGroup">Band size (pixels)</label>
                             <input type="number" id="patternGroup" min="1" max="255" value="3">
                         </div>
                     </div>
@@ -981,13 +983,13 @@
 
                     <div class="btn-row">
                         <button id="saveBtn" class="btn btn-success" disabled>Save</button>
-                        <button id="saveRebootBtn" class="btn btn-success" disabled>Save & Reboot</button>
+                        <button id="saveRebootBtn" class="btn btn-success" disabled>Save and reboot</button>
                     </div>
                 </div>
             </div>
 
             <div class="card">
-                <h2>Serial Console</h2>
+                <h2>Serial console</h2>
                 <div id="terminal" class="terminal"></div>
                 <div class="serial-input-row">
                     <input type="text" id="serialInput" placeholder="Enter command..." disabled>
@@ -1078,18 +1080,18 @@
             </div>
 
             <div class="card">
-                <h2>Configuration Options</h2>
+                <h2>Configuration options</h2>
                 <div class="help-section">
                     <p><strong>Number of LEDs</strong> - Total LEDs in your strip (1-1000)</p>
-                    <p><strong>GPIO Pin</strong> - Data pin for the LED strip. GPIO 5 works on most ESP32-C6 boards.</p>
-                    <p><strong>LED Type</strong></p>
+                    <p><strong>GPIO pin</strong> - Data pin for the LED strip. GPIO 5 works on most ESP32-C6 boards.</p>
+                    <p><strong>LED type</strong></p>
                     <ul>
                         <li><code>WS2812B</code> - Most common, 800kHz</li>
                         <li><code>WS2811</code> - Older, 400kHz</li>
                         <li><code>SK6812</code> - Similar to WS2812B, some have RGBW</li>
                         <li><code>WS2814</code> - RGBW, often 12V or 24V: choose <code>SK6812 / WS2814 (RGBW)</code> and usually a white-first order such as <code>WRGB</code></li>
                     </ul>
-                    <p><strong>Color Order</strong> - If colors look wrong, try different orders:</p>
+                    <p><strong>Color order</strong> - If colors look wrong, try different orders:</p>
                     <ul>
                         <li><code>GRB</code> - Most WS2812B strips</li>
                         <li><code>RGB</code> - Some WS2811 and older strips</li>
@@ -1099,7 +1101,7 @@
                     <p><strong>Finding an RGBW order</strong> - Start with <code>GRB</code>, then set red, green, blue and white in your Home app and note which color each one shows. Whatever lights up for green is the strip's 1st byte, red its 2nd, blue its 3rd, and white its 4th. For example, if green shows white, red shows red, blue shows green and white shows blue, the order is <code>WRGB</code>.</p>
                     <p><strong>Max Brightness</strong> - Limits power consumption and heat (1-255)</p>
                     <p><strong>Device Name</strong> - One word, shown while pairing. Rename lights in your Home app afterwards.</p>
-                    <p><strong>After a Power Cut</strong> - Restore the last state, always turn on, or always stay off.</p>
+                    <p><strong>After a power cut</strong> - Restore the last state, always turn on, or always stay off.</p>
                     <p><strong>Color pattern lights</strong> - Adds Color 1-4 lights to your Home app. Turn on 2-4 of them to
                     show a multi-color pattern (e.g. red and green); with all of them off the strip shows the main light's
                     color. Each Color light is just on/off plus a color; the main light's brightness dims everything, and
@@ -1115,7 +1117,7 @@
             </div>
 
             <div class="card">
-                <h2>Serial Commands</h2>
+                <h2>Serial commands</h2>
                 <div class="help-section cmd-list">
                     <p><strong>help</strong> <span>Show available commands</span></p>
                     <p><strong>config</strong> <span>Show current settings</span></p>

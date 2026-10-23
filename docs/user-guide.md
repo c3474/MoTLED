@@ -73,13 +73,13 @@ lead but **keep the ground connected**.
 | **Effect switches** | Adds Rainbow, Chase and Twinkle to Home ([section 6](#6-effects-rainbow-chase-twinkle)). Leave off for one simple light. |
 | **Color Pattern Layout / Band Size** | How Color 1-4 share the strip: alternating bands of N pixels (like classic holiday bulbs), or equal blocks (halves, thirds, quarters). |
 
-4. Click **Save & Reboot**. The board restarts and the page reconnects by itself.
+4. Click **Save and reboot**. The board restarts and the page reconnects by itself.
 
 ### Finding the color order
 
 If red shows as green (or similar), the color order is wrong. For RGBW strips:
 
-1. Set **Color Order** to **GRB**, Save & Reboot, and add the light to Home.
+1. Set **Color Order** to **GRB**, Save and reboot, and add the light to Home.
 2. In Home, set the light to **green**, then **red**, then **blue**, then
    **white**, and note what the strip actually shows each time.
 3. Whatever shows for green is the strip's 1st color, red its 2nd, blue its
@@ -204,7 +204,7 @@ Ticking or unticking **Color pattern lights** or **Effect switches** changes
 which tiles the light shows in Home. Apple Home doesn't pick that up on its
 own, so the light must be removed and added again:
 
-1. Change the checkbox on the **Configure** tab and click **Save & Reboot**.
+1. Change the checkbox on the **Configure** tab and click **Save and reboot**.
 2. **With the board powered on**, remove the light in Home (press and hold →
    gear → **Remove Accessory**). Removing it while the board is online lets the
    board know it's free to pair again.
