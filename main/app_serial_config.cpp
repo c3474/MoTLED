@@ -18,6 +18,9 @@
 #include "esp_system.h"
 #include "esp_app_desc.h"
 #include <esp_matter.h>
+#include <app/server/Server.h>
+#include <platform/CHIPDeviceLayer.h>
+#include <setup_payload/OnboardingCodesUtil.h>
 
 static const char *TAG = "serial_config";
 
@@ -160,6 +163,17 @@ static void process_command(const char *cmd) {
         } else {
             serial_printf("Error saving config: %s\r\n", esp_err_to_name(err));
         }
+    }
+    else if (strcmp(command, "pairing") == 0) {
+        // Print the pairing QR/manual codes while not paired (they're otherwise
+        // only printed at boot, which a reconnecting web page can miss)
+        chip::DeviceLayer::SystemLayer().ScheduleLambda([]() {
+            if (chip::Server::GetInstance().GetFabricTable().FabricCount() == 0) {
+                PrintOnboardingCodes(chip::RendezvousInformationFlags(chip::RendezvousInformationFlag::kBLE));
+            } else {
+                serial_write("Already paired. Remove it in your Home app to pair again.\r\n");
+            }
+        });
     }
     else if (strcmp(command, "effect") == 0) {
         handle_effect_command(parsed >= 2 ? param : NULL);
@@ -384,6 +398,7 @@ static void print_help(void) {
     serial_write("  set pattern_group <n>  - Pixels per band when alternating (1-255)\r\n");
     serial_write("  motion <m...>     - Rainbow, chase and/or twinkle on the current colors,\r\n");
     serial_write("                      e.g. 'motion chase twinkle'; 'motion off' (not saved)\r\n");
+    serial_write("  pairing           - Show the pairing QR code (only while not paired)\r\n");
     serial_write("  save              - Save config and reboot\r\n");
     serial_write("  reboot            - Reboot without saving\r\n");
     serial_write("  factory           - Reset to factory defaults\r\n");

@@ -1,10 +1,13 @@
-# TLED - Matter-over-Thread LED Controller
+# MoTLED - Matter-over-Thread LED Controller
 
 > **This is MoTLED, a fork of [TLED](https://github.com/maui1911/TLED) by [@maui1911](https://github.com/maui1911).**
 > The original firmware, web installer and documentation are their work, and they deserve the credit.
 > MoTLED is modified with [Claude Code](https://claude.com/claude-code) for additional features,
 > starting with WRGB color orders for WS2814 strips. See [ROADMAP.md](ROADMAP.md) for what's done and planned.
 > Web installer: <https://c3474.github.io/MoTLED/>
+>
+> **New here? Start with the [MoTLED User Guide](docs/user-guide.md)**: setup, pairing with Apple Home,
+> color patterns, effects, scenes and troubleshooting, written for everyday users.
 
 A Matter-compatible LED strip controller for ESP32-C6 that works over Thread networking. Control addressable LED strips (WS2812B, SK6812, WS2805, etc.) from Home Assistant, Apple Home, Google Home, or any Matter-compatible smart home platform.
 
@@ -23,7 +26,8 @@ A Matter-compatible LED strip controller for ESP32-C6 that works over Thread net
 - **Temperature monitoring** - Chip temperature exposed to Home Assistant
 - **Health monitoring** - Watchdog timer, heap tracking, auto-reboot on hang
 - **Power-on behavior** - Configurable: restore last state, always on, or always off
-- **Built-in effects** - Rainbow, breathing, candle, chase (implemented but not yet user-accessible, untested)
+- **Color patterns** - 2-4 colors along the strip from "Color 1-4" lights in your Home app (MoTLED, optional)
+- **Effects** - Rainbow, Chase and Twinkle switches in your Home app, combinable (MoTLED, optional)
 
 ## Hardware
 
@@ -63,7 +67,7 @@ Ready-to-print STL files (`tled_base.stl`, `tled_lid.stl`) are included in the `
 
 ### 1. Flash the Firmware
 
-Visit the **[Web Installer](https://maui1911.github.io/TLED)** and click "Install TLED Firmware".
+Visit the **[Web Installer](https://c3474.github.io/MoTLED/)** and click "Install MoTLED". See the [User Guide](docs/user-guide.md) for the full walkthrough.
 
 > **Note:** Requires Chrome or Edge browser. If prompted, hold the BOOT button on your ESP32-C6 while clicking Install.
 

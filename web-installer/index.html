@@ -1122,6 +1122,29 @@
             </div>
 
             <div class="card">
+                <h2>Using MoTLED in Apple Home</h2>
+                <div class="help-section">
+                    <p><strong>Full guide:</strong> <a href="https://github.com/c3474/MoTLED/blob/main/docs/user-guide.md" target="_blank">MoTLED User Guide</a>
+                    covers setup, pairing, scenes and troubleshooting step by step.</p>
+                    <p><strong>Rename the tiles first.</strong> Home names extra tiles "Light 2", "Light 3"... in no
+                    particular order. Turn each on by itself to identify it: the main light (whole strip, your normal
+                    color), Color 1-4 (start red, green, blue, white) and the effect switches (rainbow, moving colors,
+                    sparkles). Press and hold a tile, tap the gear, and rename it.</p>
+                    <ul>
+                        <li><strong>Main light</strong> - the master: its power turns everything on or off and its
+                        brightness dims every mode.</li>
+                        <li><strong>Color 1-4</strong> - turn on 2-4 for a multi-color pattern; all off returns to the
+                        main light's color. Their own brightness sliders are ignored.</li>
+                        <li><strong>Rainbow / Chase / Twinkle</strong> - add motion to whatever is showing; they combine.</li>
+                        <li><strong>Themes</strong> - save Home scenes like "Christmas" (red + green + Chase) and set the
+                        tiles you don't want to off.</li>
+                        <li><strong>Turning a feature checkbox on or off</strong> - remove the light in Home (with the
+                        board powered) and add it again.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="card">
                 <h2>Requirements</h2>
                 <div class="help-section">
                     <ul>
@@ -1192,6 +1215,7 @@
                     <p><strong>set effect_switches &lt;on|off&gt;</strong> <span>Rainbow/Chase/Twinkle in Home (needs re-pair)</span></p>
                     <p><strong>motion &lt;m...&gt;</strong> <span>Test rainbow, chase, twinkle (any mix); motion off (not saved)</span></p>
                     <p><strong>effect &lt;name&gt;</strong> <span>Test rainbow, breathing, candle, chase; effect off (not saved)</span></p>
+                    <p><strong>pairing</strong> <span>Show the pairing QR code (while not paired)</span></p>
                     <p><strong>save</strong> <span>Save config to flash and reboot</span></p>
                     <p><strong>reboot</strong> <span>Restart device</span></p>
                     <p><strong>factory</strong> <span>Erase all settings</span></p>
@@ -1357,6 +1381,7 @@
                 log('Connected to device\n', 'prompt');
 
                 await sendCommand('config');
+                await sendCommand('pairing');   // shows the QR code if not paired yet
 
                 while (true) {
                     const { value, done } = await reader.read();
