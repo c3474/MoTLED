@@ -76,13 +76,31 @@ first, then motion on top of them. No hard usage statistics were found.
         tiles, no sliders), behind an "Effect switches" checkbox; rainbow is
         a pattern rather than its own switch.
   - Lower priority: single-dot chase, candle (possible Halloween use).
-- [ ] **M-7 Firmware updates without USB (OTA).** The partition table already
-      has two OTA slots and the Matter OTA requestor is enabled. Upstream
-      reports that Matter OTA crashes partway through the download on the
-      ESP32-C6 (`docs/ota-update-guide.md`). *Needs research:* whether a newer
-      esp-matter fixes that crash, and what can act as the OTA provider for
-      a non-certified device (Apple Home is not expected to). The fallback is
-      BLE OTA from a browser page.
+- [ ] **M-7 Firmware updates without USB (OTA). Deferred (2026-10-23).**
+      Research done; nothing built. Findings (fact unless marked):
+  - **Apple Home as the update server:** the primary home hub (HomePod/Apple
+    TV) is the OTA provider, but it only serves firmware listed in the CSA's
+    Distributed Compliance Ledger: MainNet for certified products, or TestNet
+    plus an Apple test profile installed on *every* home hub (Apple Matter OTA
+    User Guide). Not practical for a hobby device.
+  - **Home Assistant's Matter Server** can serve local `.ota` files (TestNet
+    DCL setting) if HA is added as a second controller. Upstream saw Matter
+    OTA crash mid-download on the C6 (`docs/ota-update-guide.md`); no fix
+    found, and untested on esp-matter v1.5.
+  - **Bluetooth from the web page** (Chrome's Web Bluetooth): most practical
+    candidate. NimBLE is already in the firmware and stays on after pairing.
+    Needs a custom GATT upload service plus a browser client; Espressif's BLE
+    OTA components only ship phone/Python clients. Range is limited to
+    Bluetooth distance; not in iPhone Safari.
+  - **Pull over Thread with a "Firmware update" switch in Home:** no laptop
+    at all, but depends on the HomePods providing NAT64/DNS64 for internet
+    access (unverified), TLS memory headroom alongside Matter, and ~1.6 MB
+    over Thread (minutes; inference).
+  - **Before any OTA:** enable bootloader app rollback, so a bad image
+    reverts instead of bricking a mounted device (needs one USB flash).
+  - **Suggested restart point:** rollback safety net, plus a serial
+    `nettest` command to check for internet over Thread, then choose
+    Bluetooth or the Home switch.
 
 ## Housekeeping
 
