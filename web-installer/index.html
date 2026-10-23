@@ -11,21 +11,20 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --cyan: #00ffd5;
-            --cyan-dim: #00ffd540;
-            --cyan-glow: #00ffd580;
-            --green: #39ff14;
-            --amber: #ffb800;
-            --red: #ff3b3b;
-            --bg-deep: #0a0c0f;
-            --bg: #0d1117;
-            --bg-surface: #161b22;
-            --bg-elevated: #1c2128;
-            --border: #30363d;
-            --border-bright: #484f58;
-            --text: #e6edf3;
-            --text-dim: #8b949e;
-            --trace: #1a3a35;
+            /* Calm dark theme in the spirit of WLED: soft greys, one cyan accent */
+            --cyan: #35c9b9;
+            --cyan-dim: #35c9b933;
+            --green: #5cc46b;
+            --amber: #f0a64a;
+            --red: #e8615a;
+            --bg-deep: #17191c;
+            --bg: #1d1f23;
+            --bg-surface: #272a30;
+            --bg-elevated: #31353c;
+            --border: #3a3e46;
+            --border-bright: #4f545d;
+            --text: #eceff3;
+            --text-dim: #a6acb6;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,44 +40,6 @@
             min-height: 100vh;
             position: relative;
             overflow-x: hidden;
-        }
-
-        /* PCB trace pattern background */
-        body::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image:
-                linear-gradient(90deg, var(--trace) 1px, transparent 1px),
-                linear-gradient(var(--trace) 1px, transparent 1px),
-                radial-gradient(circle at 25% 25%, var(--trace) 2px, transparent 2px),
-                radial-gradient(circle at 75% 75%, var(--trace) 2px, transparent 2px);
-            background-size: 60px 60px, 60px 60px, 120px 120px, 120px 120px;
-            opacity: 0.4;
-            pointer-events: none;
-            z-index: 0;
-        }
-
-        /* Scanline effect */
-        body::after {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: repeating-linear-gradient(
-                0deg,
-                transparent,
-                transparent 2px,
-                rgba(0, 0, 0, 0.03) 2px,
-                rgba(0, 0, 0, 0.03) 4px
-            );
-            pointer-events: none;
-            z-index: 1000;
         }
 
         .container {
@@ -122,7 +83,6 @@
 
         .logo-matrix .led-on {
             fill: var(--cyan);
-            filter: drop-shadow(0 0 4px var(--cyan-glow));
             animation: breathe 3.5s ease-in-out infinite;
         }
 
@@ -146,15 +106,12 @@
             border-radius: 2px;
             margin-left: 0.5rem;
             vertical-align: super;
-            letter-spacing: 0.05em;
         }
 
         .tagline {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             color: var(--text-dim);
-            font-size: 0.9rem;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
+            font-size: 0.95rem;
         }
 
         .tagline span {
@@ -178,11 +135,9 @@
             border: none;
             color: var(--text-dim);
             cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
+            font-family: inherit;
+            font-size: 0.95rem;
             font-weight: 500;
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
             transition: all 0.2s ease;
             position: relative;
         }
@@ -205,7 +160,6 @@
             right: 0;
             height: 2px;
             background: var(--cyan);
-            box-shadow: 0 0 10px var(--cyan-glow);
         }
 
         .tab-content { display: none; }
@@ -230,33 +184,15 @@
             overflow: hidden;
         }
 
-        .card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, var(--cyan-dim), transparent);
-        }
-
         .card h2 {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
+            font-family: inherit;
+            font-size: 1.05rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.15em;
-            color: var(--cyan);
+            color: var(--text);
             margin-bottom: 1.25rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
-        }
-
-        .card h2::before {
-            content: '//';
-            color: var(--text-dim);
-            font-weight: 400;
         }
 
         .info {
@@ -305,28 +241,22 @@
         }
 
         esp-web-install-button::part(button) {
-            font-family: 'JetBrains Mono', monospace;
-            background: linear-gradient(135deg, var(--cyan), #00c4a7);
+            font-family: inherit;
+            background: var(--cyan);
             color: var(--bg-deep);
             border: none;
             border-radius: 6px;
             padding: 1rem 2.5rem;
             font-size: 0.9rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow:
-                0 0 20px var(--cyan-dim),
-                0 4px 20px rgba(0, 0, 0, 0.3);
+            box-shadow: none;
         }
 
         esp-web-install-button::part(button):hover {
             transform: translateY(-2px);
-            box-shadow:
-                0 0 30px var(--cyan-glow),
-                0 8px 30px rgba(0, 0, 0, 0.4);
+            box-shadow: none;
         }
 
         esp-web-install-button [slot="unsupported"],
@@ -354,7 +284,7 @@
         }
 
         .step-num {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             font-size: 0.75rem;
             font-weight: 600;
             color: var(--bg);
@@ -386,21 +316,21 @@
             gap: 0.75rem;
             padding: 0.875rem 1rem;
             border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             font-size: 0.8rem;
             margin-bottom: 1.25rem;
             border: 1px solid;
         }
 
         .status.disconnected {
-            background: rgba(255, 184, 0, 0.08);
-            border-color: rgba(255, 184, 0, 0.25);
+            background: rgba(240, 166, 74, 0.1);
+            border-color: rgba(240, 166, 74, 0.3);
             color: var(--amber);
         }
 
         .status.connected {
-            background: rgba(57, 255, 20, 0.08);
-            border-color: rgba(57, 255, 20, 0.25);
+            background: rgba(92, 196, 107, 0.1);
+            border-color: rgba(92, 196, 107, 0.3);
             color: var(--green);
         }
 
@@ -409,7 +339,6 @@
             height: 8px;
             border-radius: 50%;
             background: currentColor;
-            box-shadow: 0 0 8px currentColor;
             animation: pulse 2s infinite;
         }
 
@@ -432,18 +361,16 @@
         .btn-row .btn { flex: 1; }
 
         .btn {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             background: var(--bg-elevated);
             color: var(--text);
             border: 1px solid var(--border);
             border-radius: 6px;
             padding: 0.75rem 1.25rem;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             font-weight: 500;
             cursor: pointer;
             transition: all 0.2s ease;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
         }
 
         .btn:hover:not(:disabled) {
@@ -465,7 +392,6 @@
         .btn-primary:hover:not(:disabled) {
             background: #00e6c0;
             border-color: #00e6c0;
-            box-shadow: 0 0 15px var(--cyan-dim);
         }
 
         .btn-success {
@@ -477,7 +403,6 @@
         .btn-success:hover:not(:disabled) {
             background: #32e610;
             border-color: #32e610;
-            box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
         }
 
         .btn-danger {
@@ -493,8 +418,8 @@
 
         /* QR Card */
         .qr-card {
-            background: linear-gradient(135deg, #0d2818, #0d1117);
-            border: 1px solid rgba(57, 255, 20, 0.3);
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
             padding: 1.25rem;
             border-radius: 8px;
             margin-bottom: 1.25rem;
@@ -508,12 +433,10 @@
         }
 
         .qr-card h3 {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
+            font-family: inherit;
+            font-size: 1rem;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--green);
+            color: var(--text);
             margin-bottom: 0.75rem;
         }
 
@@ -556,12 +479,10 @@
         }
 
         .config-item label {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.7rem;
+            font-family: inherit;
+            font-size: 0.85rem;
             font-weight: 500;
             color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
         }
 
         /* Checkbox rows inside the config grid (override the field label/input styles) */
@@ -593,7 +514,7 @@
 
         .config-item select,
         .config-item input {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             background: var(--bg);
             border: 1px solid var(--border);
             border-radius: 6px;
@@ -817,10 +738,9 @@
         }
 
         footer p {
-            font-family: 'JetBrains Mono', monospace;
+            font-family: inherit;
             font-size: 0.75rem;
             color: var(--text-dim);
-            letter-spacing: 0.05em;
         }
 
         footer p + p {
