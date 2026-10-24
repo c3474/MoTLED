@@ -226,6 +226,10 @@ own, so the light must be removed and added again:
 
 ## 9. Updating the firmware
 
+When you connect on the **Configure** tab, the page compares your board's
+firmware with the version it installs. If they differ, it shows **Firmware
+update available**, with a button that takes you to the Flash tab.
+
 1. **Hard-refresh the web page** first (Cmd+Shift+R on a Mac, Ctrl+Shift+R on
    Windows) so you get the newest version. The version badge next to the logo
    shows which firmware the page will install.

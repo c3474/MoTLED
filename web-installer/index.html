@@ -508,6 +508,24 @@
             accent-color: var(--cyan);
         }
 
+        .update-banner {
+            background: rgba(240, 166, 74, 0.1);
+            border: 1px solid rgba(240, 166, 74, 0.35);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        .update-banner p {
+            margin-bottom: 0.75rem;
+        }
+
+        .update-banner strong {
+            color: var(--amber);
+        }
+
         .config-hint {
             font-size: 0.8rem;
             color: var(--text-dim);
@@ -860,6 +878,12 @@
                 </div>
 
                 <p id="deviceFirmware" class="config-hint" style="margin-bottom: 0.75rem;"></p>
+                <div id="updateBanner" class="update-banner" hidden>
+                    <p><strong>Firmware update available.</strong> <span id="updateBannerText"></span></p>
+                    <p>Some buttons on this page need it. Install it from the Flash tab and leave
+                    <strong>Erase device</strong> unticked: your settings and Home pairing are kept.</p>
+                    <button id="goToFlashBtn" class="btn btn-primary">Go to Flash tab</button>
+                </div>
                 <div class="btn-row">
                     <button id="connectBtn" class="btn btn-primary">Connect</button>
                     <button id="rebootBtn" class="btn" disabled>Reboot</button>
@@ -1245,6 +1269,33 @@
         let parseConfigBuffer = '';
         let configLoaded = false;        // True once the device's settings filled the form
         const deviceFirmware = document.getElementById('deviceFirmware');
+        const updateBanner = document.getElementById('updateBanner');
+        let deviceVersion = null;   // From the board's 'firmware' config line (missing on old firmware)
+
+        // The version this page installs, stamped into the header badge by CI (e.g. v0.7.1-880348f)
+        function pageVersion() {
+            return document.querySelector('.version-badge').textContent.trim().replace(/^v/, '');
+        }
+
+        // Once the board's settings have loaded, offer an update if it runs a
+        // different build than this page installs (or one too old to report it)
+        function checkFirmwareVersion() {
+            const page = pageVersion();
+            const pageIsCiBuild = /-[0-9a-f]{7}$/.test(page);  // local copies have no build id
+            if (!pageIsCiBuild || deviceVersion === page) {
+                updateBanner.hidden = true;
+                return;
+            }
+            document.getElementById('updateBannerText').textContent = deviceVersion
+                ? `Your board runs ${deviceVersion}; this page installs ${page}.`
+                : `Your board runs an older firmware; this page installs ${page}.`;
+            updateBanner.hidden = false;
+        }
+
+        document.getElementById('goToFlashBtn').addEventListener('click', () => {
+            document.querySelector('.tab[data-tab="install"]').click();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
         let reconnectAfterReboot = false; // Reconnect automatically when the device comes back
 
         // Save only after the form shows the device's real settings, so a failed
@@ -1365,6 +1416,8 @@
             port = null;
             configLoaded = false;
             deviceFirmware.textContent = '';
+            deviceVersion = null;
+            updateBanner.hidden = true;
             serialBuffer = '';
             parseConfigBuffer = '';
             updateStatus(false);
@@ -1463,7 +1516,8 @@
                             updateFeatureChecks();
                             break;
                         case 'firmware':
-                            deviceFirmware.textContent = `Device firmware: ${value.trim()}`;
+                            deviceVersion = value.trim();
+                            deviceFirmware.textContent = `Device firmware: ${deviceVersion}`;
                             break;
                         case 'type':
                             document.getElementById('ledType').value = value.trim();
@@ -1481,6 +1535,7 @@
                             document.getElementById('deviceName').value = value.trim();
                             configLoaded = true;
                             updateSaveButtons();
+                            checkFirmwareVersion();
                             break;
                     }
                 }
