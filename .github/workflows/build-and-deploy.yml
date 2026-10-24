@@ -15,6 +15,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Paths that make up the firmware; the version's build id only changes with these
+env:
+  FIRMWARE_PATHS: main device CMakeLists.txt sdkconfig sdkconfig.defaults partitions.csv
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,6 +28,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history: the build id is the last commit touching firmware
 
       - name: Build firmware
         shell: bash
@@ -31,7 +37,9 @@ jobs:
           git config --global --add safe.directory '*'
           . "$IDF_PATH/export.sh"
           . "$ESP_MATTER_PATH/export.sh"
-          export MOTLED_BUILD_ID="${GITHUB_SHA::7}"
+          # Build id = last commit that changed the firmware, so page/docs-only
+          # commits keep the same version (no false "update available")
+          export MOTLED_BUILD_ID=$(git log -1 --format=%h --abbrev=7 -- $FIRMWARE_PATHS)
           idf.py build
 
       - name: Collect web installer binaries
@@ -67,6 +75,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # full history: the build id is the last commit touching firmware
 
       - name: Download firmware
         uses: actions/download-artifact@v4
@@ -78,7 +88,8 @@ jobs:
         run: |
           # First, unindented set(PROJECT_VER "x.y.z") line (not the CI suffix line)
           VERSION=$(grep -m1 '^set(PROJECT_VER "' CMakeLists.txt | grep -o '"[^"]*"' | tr -d '"')
-          VERSION="${VERSION}-${GITHUB_SHA::7}"
+          git config --global --add safe.directory '*'
+          VERSION="${VERSION}-$(git log -1 --format=%h --abbrev=7 -- $FIRMWARE_PATHS)"
           sed -i "s/\"version\": \".*\"/\"version\": \"${VERSION}\"/" web-installer/manifest.json
           sed -i "s/>v[0-9][^<]*<\/span>/>v${VERSION}<\/span>/" web-installer/index.html
           echo "Publishing firmware version ${VERSION}"
