@@ -6,7 +6,6 @@
 #include <esp_err.h>
 #include <esp_log.h>
 #include <nvs_flash.h>
-#include <driver/gpio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
@@ -19,7 +18,6 @@
 #include "app_config.h"
 #include "app_driver.h"
 #include "app_nvs_config.h"
-#include "app_ble_config.h"
 #include "app_serial_config.h"
 #include "app_device_info.h"
 #include "app_monitoring.h"
@@ -86,45 +84,6 @@ static void temp_update_task(void *pvParameters)
 
         vTaskDelay(pdMS_TO_TICKS(TEMP_UPDATE_INTERVAL_MS));
     }
-}
-
-// Check if boot button is held
-static bool is_button_held(uint32_t hold_time_ms)
-{
-    gpio_num_t btn_gpio = (gpio_num_t)TLED_BOOT_BUTTON_GPIO;
-
-    // Configure GPIO as input with pullup
-    gpio_config_t io_conf = {};
-    io_conf.pin_bit_mask = (1ULL << btn_gpio);
-    io_conf.mode = GPIO_MODE_INPUT;
-    io_conf.pull_up_en = GPIO_PULLUP_ENABLE;
-    io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-    io_conf.intr_type = GPIO_INTR_DISABLE;
-    gpio_config(&io_conf);
-
-    // Check if button is pressed (active low)
-    if (gpio_get_level(btn_gpio) != 0) {
-        return false;  // Not pressed
-    }
-
-    // Wait and check if still held
-    ESP_LOGI(TAG, "Button pressed, waiting %lu ms to confirm config mode...", (unsigned long)hold_time_ms);
-
-    uint32_t held_time = 0;
-    const uint32_t check_interval = 100;
-
-    while (held_time < hold_time_ms) {
-        vTaskDelay(pdMS_TO_TICKS(check_interval));
-        held_time += check_interval;
-
-        if (gpio_get_level(btn_gpio) != 0) {
-            ESP_LOGI(TAG, "Button released, normal boot");
-            return false;
-        }
-    }
-
-    ESP_LOGI(TAG, "Button held for %lu ms - entering config mode", (unsigned long)hold_time_ms);
-    return true;
 }
 
 static void app_event_cb(const ChipDeviceEvent *event, intptr_t arg)
@@ -284,17 +243,10 @@ extern "C" void app_main()
     /* Check if first boot - use defaults and save */
     if (!tled_config_is_configured()) {
         ESP_LOGI(TAG, "First boot detected - using default config");
-        ESP_LOGI(TAG, "To change settings: hold BOOT button for 5s during startup");
+        ESP_LOGI(TAG, "To change settings: connect via USB and use the web installer's Configure tab");
 
         // Save the default config so next boot isn't "first boot"
         tled_config_save();
-    }
-
-    // TODO: BLE config mode on button hold (needs to be done before Matter starts BLE)
-    // For now, just log if button is held
-    if (is_button_held(3000)) {
-        ESP_LOGW(TAG, "Button held - BLE config not yet implemented");
-        ESP_LOGW(TAG, "Use nRF Connect to configure via BLE characteristics");
     }
 
     ESP_LOGI(TAG, "Using config: %d LEDs on GPIO%d", config->num_leds, config->gpio_pin);

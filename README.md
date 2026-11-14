@@ -250,7 +250,6 @@ TLED/
 │   ├── app_serial_config.cpp   # USB serial command interface
 │   ├── app_monitoring.cpp      # Health monitoring, watchdog, temperature
 │   ├── app_device_info.cpp     # Matter device branding
-│   ├── app_ble_config.cpp      # BLE commissioning configuration
 │   └── Kconfig.projbuild       # Build-time configuration options
 ├── web-installer/
 │   ├── index.html              # Web installer & configurator

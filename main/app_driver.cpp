@@ -107,8 +107,6 @@ typedef struct {
     uint8_t hue;            // 0-254 (Matter range)
     uint8_t saturation;     // 0-254 (Matter range)
     uint16_t color_temp;    // Color temperature in mireds (WS2805 only)
-    uint16_t color_x;       // 0-65535 (Matter CIE x * 65535)
-    uint16_t color_y;       // 0-65535 (Matter CIE y * 65535)
     color_mode_t color_mode;
 
     // Phase 3: Transitions and effects
@@ -167,8 +165,6 @@ static light_driver_t s_light_driver = {
     .hue = 0,
     .saturation = 0,
     .color_temp = TLED_DEFAULT_CT_MIREDS,
-    .color_x = 24939,
-    .color_y = 24701,
     .color_mode = COLOR_MODE_HSV,
     .transition = {0},
     .effect_id = TLED_EFFECT_NONE,
