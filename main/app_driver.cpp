@@ -6,7 +6,6 @@
 #include <esp_log.h>
 #include <driver/gpio.h>
 #include <led_strip.h>
-#include <math.h>
 #include <string.h>
 #include <stdlib.h>
 #include <nvs_flash.h>
@@ -109,10 +108,7 @@ typedef struct {
     uint16_t color_temp;    // Color temperature in mireds (WS2805 only)
     color_mode_t color_mode;
 
-    // Phase 3: Transitions and effects
     transition_state_t transition;
-    uint8_t effect_id;
-    uint32_t effect_step;
 
     // Multi-color pattern (pattern_count 0 = off, show the single light color)
     uint8_t pattern_count;
@@ -167,8 +163,6 @@ static light_driver_t s_light_driver = {
     .color_temp = TLED_DEFAULT_CT_MIREDS,
     .color_mode = COLOR_MODE_HSV,
     .transition = {0},
-    .effect_id = TLED_EFFECT_NONE,
-    .effect_step = 0,
     .pattern_count = 0,
     .pattern_layout = PATTERN_LAYOUT_ALTERNATE,
     .pattern_group = TLED_PATTERN_DEFAULT_GROUP,
@@ -647,108 +641,7 @@ static float lerp(float from, float to, float t)
     return from + (to - from) * t;
 }
 
-// Rainbow effect - cycle through hues
-static void effect_rainbow(light_driver_t *driver)
-{
-    if (driver->strip == NULL && driver->ws2805 == NULL) return;
-
-    // Use effect_step as hue offset
-    uint16_t base_hue = driver->effect_step % 360;
-
-    // Get brightness from current setting
-    uint8_t val = (driver->brightness * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX;
-
-    uint8_t r, g, b;
-    hsv_to_rgb(base_hue, 100, val, &r, &g, &b);
-    apply_max_brightness(driver, &r, &g, &b);
-    update_strip_rgb(driver, r, g, b);
-
-    driver->effect_step += 2;  // Speed of rainbow
-}
-
-// Breathing effect - pulse brightness
-static void effect_breathing(light_driver_t *driver)
-{
-    if (driver->strip == NULL && driver->ws2805 == NULL) return;
-
-    // Sine wave for smooth breathing
-    float phase = (float)(driver->effect_step % 360) * 3.14159f / 180.0f;
-    float breath = (sinf(phase) + 1.0f) / 2.0f;  // 0-1 range
-
-    // Scale to brightness
-    uint8_t max_val = (driver->brightness * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX;
-    uint8_t val = (uint8_t)(breath * max_val);
-
-    // Use current hue/sat
-    uint16_t hue = (driver->hue * STANDARD_HUE_MAX) / MATTER_HUE_MAX;
-    uint8_t sat = (driver->saturation * STANDARD_SATURATION_MAX) / MATTER_SATURATION_MAX;
-
-    uint8_t r, g, b;
-    hsv_to_rgb(hue, sat, val, &r, &g, &b);
-    apply_max_brightness(driver, &r, &g, &b);
-    update_strip_rgb(driver, r, g, b);
-
-    driver->effect_step += 3;  // Speed of breathing
-}
-
-// Candle flicker effect
-static void effect_candle(light_driver_t *driver)
-{
-    if (driver->strip == NULL && driver->ws2805 == NULL) return;
-
-    // Random flicker with warm color
-    uint8_t max_val = (driver->brightness * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX;
-
-    // Random variation: 50-100% of max brightness
-    uint8_t variation = (esp_random() % 50) + 50;
-    uint8_t val = (max_val * variation) / 100;
-
-    // Warm orange/yellow hue (around 30-40 degrees)
-    uint16_t hue = 30 + (esp_random() % 15);
-
-    uint8_t r, g, b;
-    hsv_to_rgb(hue, 100, val, &r, &g, &b);
-    apply_max_brightness(driver, &r, &g, &b);
-    update_strip_rgb(driver, r, g, b);
-
-    driver->effect_step++;
-}
-
-// Chase effect - moving dot
-static void effect_chase(light_driver_t *driver)
-{
-    if (driver->strip == NULL && driver->ws2805 == NULL) return;
-
-    // Get current color
-    uint16_t hue = (driver->hue * STANDARD_HUE_MAX) / MATTER_HUE_MAX;
-    uint8_t sat = (driver->saturation * STANDARD_SATURATION_MAX) / MATTER_SATURATION_MAX;
-    uint8_t val = (driver->brightness * STANDARD_BRIGHTNESS_MAX) / MATTER_BRIGHTNESS_MAX;
-
-    uint8_t r, g, b;
-    hsv_to_rgb(hue, sat, val, &r, &g, &b);
-    apply_max_brightness(driver, &r, &g, &b);
-
-    // Current position
-    int num_leds = driver->num_leds;
-    int pos = driver->effect_step % num_leds;
-    int trail = (pos - 1 + num_leds) % num_leds;
-
-    // Set all LEDs
-    for (int i = 0; i < num_leds; i++) {
-        if (i == pos) {
-            driver_set_pixel(driver, i, r, g, b, 0, 0);
-        } else if (i == trail) {
-            driver_set_pixel(driver, i, r / 3, g / 3, b / 3, 0, 0);
-        } else {
-            driver_set_pixel(driver, i, 0, 0, 0, 0, 0);
-        }
-    }
-
-    driver_refresh(driver);
-    driver->effect_step++;
-}
-
-// Main transition/effect task
+// Main transition/animation task
 static void transition_task(void *arg)
 {
     light_driver_t *driver = (light_driver_t *)arg;
@@ -791,27 +684,6 @@ static void transition_task(void *arg)
                 vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(100));
                 continue;
             }
-        }
-
-        // Check if we're running an effect
-        if (driver->effect_id != TLED_EFFECT_NONE) {
-            switch (driver->effect_id) {
-                case TLED_EFFECT_RAINBOW:
-                    effect_rainbow(driver);
-                    break;
-                case TLED_EFFECT_BREATHING:
-                    effect_breathing(driver);
-                    break;
-                case TLED_EFFECT_CANDLE:
-                    effect_candle(driver);
-                    break;
-                case TLED_EFFECT_CHASE:
-                    effect_chase(driver);
-                    break;
-            }
-            xSemaphoreGive(driver->mutex);
-            vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(TLED_TRANSITION_TICK_MS));
-            continue;
         }
 
         // Handle transition
@@ -905,9 +777,6 @@ static void start_transition(light_driver_t *driver, uint8_t target_hue, uint8_t
     driver->transition.transition_start_ticks = xTaskGetTickCount();
     driver->transition.transition_duration_ms = duration_ms > 0 ? duration_ms : 1;
     driver->transition.transitioning = true;
-
-    // Stop any running effect
-    driver->effect_id = TLED_EFFECT_NONE;
 
     ESP_LOGI(TAG, "Transition: H=%.0f->%d S=%.0f->%d V=%.0f->%d over %lums",
              driver->transition.start_hue, target_hue,
@@ -1135,35 +1004,6 @@ esp_err_t app_driver_light_set_color_temp_with_transition(app_driver_handle_t ha
     return ESP_OK;
 }
 
-esp_err_t app_driver_light_set_effect(app_driver_handle_t handle, uint8_t effect_id)
-{
-    light_driver_t *driver = (light_driver_t *)handle;
-    if (driver == NULL) {
-        return ESP_ERR_INVALID_ARG;
-    }
-
-    xSemaphoreTake(driver->mutex, portMAX_DELAY);
-
-    driver->effect_id = effect_id;
-    driver->effect_step = 0;
-    driver->transition.transitioning = false;
-    uint8_t hue = driver->hue;
-    uint8_t sat = driver->saturation;
-    uint8_t bri = driver->brightness;
-
-    ESP_LOGI(TAG, "Effect set to %d", effect_id);
-
-    xSemaphoreGive(driver->mutex);
-
-    // Turning effects off fades back to the current color instead of
-    // leaving the strip frozen on the effect's last frame
-    if (effect_id == TLED_EFFECT_NONE) {
-        start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
-    }
-
-    return ESP_OK;
-}
-
 esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
                                        const uint8_t colors[][3], uint8_t count,
                                        uint8_t layout, uint8_t group)
@@ -1190,7 +1030,7 @@ esp_err_t app_driver_light_set_pattern(app_driver_handle_t handle,
 
     xSemaphoreGive(driver->mutex);
 
-    // Redraw through a transition so the change also stops any running effect
+    // Redraw through a transition
     start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
     return ESP_OK;
 }
@@ -1213,7 +1053,7 @@ esp_err_t app_driver_light_set_motion(app_driver_handle_t handle, uint8_t motion
     ESP_LOGI(TAG, "Motion set: 0x%02x", motion);
     xSemaphoreGive(driver->mutex);
 
-    // Redraw (and stop any serial test effect); motion keeps drawing after this
+    // Redraw; motion keeps drawing after this
     start_transition(driver, hue, sat, bri, TLED_DEFAULT_TRANSITION_MS);
     return ESP_OK;
 }
@@ -1222,22 +1062,6 @@ uint8_t app_driver_light_get_motion(app_driver_handle_t handle)
 {
     light_driver_t *driver = (light_driver_t *)handle;
     return driver != NULL ? driver->motion : 0;
-}
-
-uint8_t app_driver_light_get_effect(app_driver_handle_t handle)
-{
-    light_driver_t *driver = (light_driver_t *)handle;
-    if (driver == NULL) {
-        return TLED_EFFECT_NONE;
-    }
-    // Single-byte read is atomic on ESP32, but use mutex for consistency if available
-    if (driver->mutex != NULL) {
-        xSemaphoreTake(driver->mutex, portMAX_DELAY);
-        uint8_t effect = driver->effect_id;
-        xSemaphoreGive(driver->mutex);
-        return effect;
-    }
-    return driver->effect_id;
 }
 
 static void app_driver_button_toggle_cb(void *button_handle, void *usr_data)

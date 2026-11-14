@@ -309,23 +309,6 @@ esp_err_t app_driver_light_set_color_temp_with_transition(app_driver_handle_t ha
                                                           uint32_t transition_ms);
 
 /**
- * @brief Set an effect mode
- *
- * @param handle Driver handle
- * @param effect_id Effect ID (see TLED_EFFECT_* in app_config.h)
- * @return ESP_OK on success
- */
-esp_err_t app_driver_light_set_effect(app_driver_handle_t handle, uint8_t effect_id);
-
-/**
- * @brief Get current effect mode
- *
- * @param handle Driver handle
- * @return Current effect ID
- */
-uint8_t app_driver_light_get_effect(app_driver_handle_t handle);
-
-/**
  * @brief Show a multi-color pattern instead of the single light color
  *
  * The pattern follows the light's power and brightness. Not saved across reboots.

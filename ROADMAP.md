@@ -58,7 +58,10 @@ once it is merged and tested on the strip.
       temperature, with no color wheel. Plain warm/cool-only addressable
       strips (3-channel chips) would need a new strip type; not planned yet.
 - [ ] **M-6 Animations.** Effects ranked by usefulness for porch/eave lights:
-  - [x] Step 1: serial `effect` command; all four upstream effects work.
+  - [x] Step 1: serial `effect` command; all four upstream effects worked.
+        Removed in the 2026-11 cleanup: Rainbow and Chase are covered by the
+        effect switches, and breathing/candle will be rebuilt on the pattern
+        renderer (below) rather than kept as a separate code path.
   - [x] **Rainbow:** full rainbow along the strip; with Chase it becomes a
         rainbow chase.
   - [x] **Chase for patterns:** the color pattern slides along the strip;

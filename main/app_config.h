@@ -39,13 +39,6 @@
 #define TLED_TRANSITION_TICK_MS     20      // 50 FPS update rate
 #define TLED_DEFAULT_TRANSITION_MS  CONFIG_TLED_DEFAULT_TRANSITION_MS
 
-// Effect IDs
-#define TLED_EFFECT_NONE        0
-#define TLED_EFFECT_RAINBOW     1
-#define TLED_EFFECT_BREATHING   2
-#define TLED_EFFECT_CANDLE      3
-#define TLED_EFFECT_CHASE       4
-
 // Device identification
 #define TLED_DEVICE_NAME        "TLED"
 #define TLED_VENDOR_NAME        "TLED Project"
