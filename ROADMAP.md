@@ -123,6 +123,10 @@ once it is merged and tested on the strip.
       (clears all pairings, keeps LED settings). Removing a light in Apple
       Home leaves the iPhone's own pairing (Settings > General > Matter
       Accessories), so the board kept saying "Already paired".
+- [x] **H-7 Unit tests in CI.** The color, white-mixing and pattern math
+      lives in `main/tled_color_math.h` and its tests run on every push
+      (`test/host/run.sh`, also runs on a Mac). A failing test blocks
+      publishing.
 - [x] **H-3 Rebrand and restyle the web installer.** Give it its own look
       (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
       Change its title and links to MoTLED and credit upstream TLED.

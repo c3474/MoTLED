@@ -10,7 +10,7 @@ Fork of [TLED](https://github.com/maui1911/TLED) for ESP32-C6, tuned for Apple H
 
 There is no local toolchain. GitHub Actions (`.github/workflows/build-and-deploy.yml`) builds every push in the
 `espressif/esp-matter:release-v1.5_idf_v5.4.1` container. Pushes to `main` also publish the web installer, with
-that firmware, to GitHub Pages. Work on a feature branch, let CI build it, then fast-forward `main`.
+that firmware, to GitHub Pages, but only if the host unit tests (`test/host/run.sh`, runs locally too) pass. Work on a feature branch, let CI build it, then fast-forward `main`.
 
 ## Layout
 
@@ -24,7 +24,8 @@ main/
 ├── app_monitoring.cpp     # Heap/temperature logging, watchdog
 └── app_device_info.cpp    # Matter device identification
 web-installer/index.html   # Flasher, Configure tab and Docs tab (single file)
-test/                      # Unit tests for the pure color/pattern helpers
+main/tled_color_math.h     # Pure color/pattern helpers (no ESP headers, so they build on a PC)
+test/test_color_math.cpp   # Unit tests for those helpers; CI runs them via test/host/run.sh
 ```
 
 ## Rules that are easy to break

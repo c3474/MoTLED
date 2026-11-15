@@ -20,6 +20,17 @@ env:
   FIRMWARE_PATHS: main device CMakeLists.txt sdkconfig sdkconfig.defaults partitions.csv
 
 jobs:
+  # Pure color/pattern math, compiled and run on the CI machine itself (seconds,
+  # no ESP toolchain). A failure here blocks publishing.
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run host unit tests
+        run: test/host/run.sh
+
   build:
     runs-on: ubuntu-latest
     # ESP-IDF 5.4.1 + esp-matter; upstream TLED does not pin an esp-matter version
@@ -59,7 +70,7 @@ jobs:
           path: firmware/
 
   deploy:
-    needs: build
+    needs: [build, test]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
