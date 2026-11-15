@@ -3,6 +3,8 @@
  * Main Application Entry Point
  */
 
+#include <stdlib.h>
+
 #include <esp_err.h>
 #include <esp_log.h>
 #include <nvs_flash.h>
@@ -52,8 +54,11 @@ using namespace chip::app::Clusters;
 
 constexpr auto k_timeout_seconds = 300;
 
-// Temperature update interval (5 seconds)
-#define TEMP_UPDATE_INTERVAL_MS 5000
+// How often the chip temperature is read, and how far it must move (in Matter's
+// 0.01 C units) before the new value is sent. Every attribute change is reported
+// to the controllers over Thread, so small wobbles are not worth sending.
+#define TEMP_UPDATE_INTERVAL_MS 60000
+#define TEMP_REPORT_THRESHOLD   50      // 0.5 C
 
 // Task to periodically update the temperature attribute
 static void temp_update_task(void *pvParameters)
@@ -61,13 +66,19 @@ static void temp_update_task(void *pvParameters)
     // Wait for Matter stack to be ready
     vTaskDelay(pdMS_TO_TICKS(10000));
 
+    bool reported = false;      // False until the first value has been sent
+    int16_t last_reported = 0;
+
     while (true) {
         float temp = monitoring_get_temperature();
+        bool valid = temp > -900.0f;
+        int16_t temp_value = valid ? static_cast<int16_t>(temp * 100) : 0;  // 0.01°C units
 
-        // Only update if we got a valid reading
-        if (temp > -900.0f) {
+        // Only update on a valid reading that has moved enough since the last one sent
+        if (valid && (!reported || abs(temp_value - last_reported) >= TEMP_REPORT_THRESHOLD)) {
+            reported = true;
+            last_reported = temp_value;
             uint16_t endpoint_id = temp_sensor_endpoint_id;
-            int16_t temp_value = static_cast<int16_t>(temp * 100);  // Convert to 0.01°C units
 
             // Schedule the attribute update on the Matter thread
             chip::DeviceLayer::SystemLayer().ScheduleLambda([endpoint_id, temp_value]() {

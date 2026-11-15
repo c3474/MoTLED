@@ -127,6 +127,9 @@ once it is merged and tested on the strip.
       lives in `main/tled_color_math.h` and its tests run on every push
       (`test/host/run.sh`, also runs on a Mac). A failing test blocks
       publishing.
+- [x] **H-8 Quieter temperature reports.** The chip temperature is read once
+      a minute and only sent when it has moved 0.5 °C, instead of every 5
+      seconds (every send is a report over Thread).
 - [x] **H-3 Rebrand and restyle the web installer.** Give it its own look
       (colors, fonts, layout, logo) so it doesn't copy the original TLED design.
       Change its title and links to MoTLED and credit upstream TLED.

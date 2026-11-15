@@ -111,6 +111,11 @@ What you see depends on the two feature checkboxes:
 | Color pattern lights | The main light **plus 4 Color lights**. |
 | Effect switches | The main light **plus 3 on/off switches** (Rainbow, Chase, Twinkle). |
 
+Every MoTLED also reports a **temperature** to Home. It is the controller
+chip's own temperature (typically warmer than the room), not the room's. It
+is checked about once a minute and only updates in Home when it has changed
+by 0.5 °C or more.
+
 **Home names the extra tiles "Light 2", "Light 3" and so on, in no
 particular order. Rename them first**, or nothing else will make sense:
 
